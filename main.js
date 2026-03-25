@@ -36,6 +36,7 @@ const BASE_STATS = { atk: 10, def: 10, crit: 5 };
 const MAX_STAMINA = 10;
 const STAMINA_RECOVERY_MS = 10000; // テスト用に10秒で1回復
 const SAVE_KEY = 'hacsura_save_data';
+const DAILY_DATE_KEY = 'hacsura_daily_date'; // 追加: ミッションリセット用のキー
 
 // 品質ランク判定関数（個体値可視化）
 function getQualityRank(quality) {
@@ -597,7 +598,7 @@ async function startDungeon() {
 }
 
 // 広告（Monetag Direct Link）再生処理
-const MONETAG_DIRECT_LINK = 'https://omg10.com/4/10783828';
+const MONETAG_DIRECT_LINK = 'https://omg10.com/4/10783831';
 
 if (adBtn) {
     adBtn.addEventListener('click', () => {

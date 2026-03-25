@@ -55,7 +55,12 @@ export default async function handler(request, response) {
 
   } catch (error) {
     console.error('KV Error:', error);
-    // Vercel KVが未連携の場合のエラーハンドリング
-    return response.status(500).json({ error: 'Database connection error', details: error.message });
+    // Vercel KVが未連携、またはエラー時の回避策
+    return response.status(200).json({ 
+      error: 'KV connection error', 
+      details: 'Vercel KVの連携が必要です。プロジェクトの設定でKVが正しくLinkされているか確認してください。',
+      fallback: true,
+      data: []
+    });
   }
 }
