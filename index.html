@@ -51,21 +51,6 @@
                     <!-- ここにボーナスアイテム表示 -->
                 </div>
                 <button id="close-login-bonus-btn" class="btn primary">受け取る</button>
-            </div>
-        </div>
-
-        <!-- スコア送信オーバーレイ -->
-        <div id="submit-score-overlay" class="hidden">
-            <div id="submit-score-content">
-                <h2>🏆 オンライン登録</h2>
-                <p style="margin-bottom:15px; font-size:0.9rem;">記録更新！ランキングに名前を登録しましょう。</p>
-                <div style="font-size:1.5rem; color:#ffb300; margin-bottom:15px;">戦闘力: <span id="submit-score-val">0</span></div>
-                <input type="text" id="player-name-input" placeholder="プレイヤー名 (10文字以内)" maxlength="10" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:none; text-align:center; font-size:1.1rem; background:#333; color:white;">
-                <button id="submit-score-btn" class="btn primary">送信してリセット</button>
-                <button id="skip-submit-btn" class="btn secondary">送信せずにリセット</button>
-            </div>
-        </div>
-
         <!-- ランキングオーバーレイ -->
         <div id="ranking-overlay" class="hidden">
             <div id="ranking-content">
@@ -75,6 +60,15 @@
                 <div class="ranking-tabs" style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
                     <button id="tab-local" class="btn text-only active-tab" style="flex:1;">ローカル</button>
                     <button id="tab-online" class="btn text-only" style="flex:1;">オンライン</button>
+                </div>
+                
+                <!-- オンライン用スコア送信エリア（JSで表示切替） -->
+                <div id="online-submit-area" class="hidden" style="background:#333; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
+                    <div style="font-size:0.9rem; color:#ffd54f; margin-bottom:8px;">現在の戦闘力: <span id="current-score-val">0</span></div>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="player-name-input" placeholder="名前 (10文字以内)" maxlength="10" style="flex:1; padding:8px; border-radius:4px; border:none; background:#222; color:white; text-align:center;">
+                        <button id="submit-score-btn" class="btn primary" style="width:auto; padding:8px 15px; margin-top:0; font-size:0.9rem;">送信</button>
+                    </div>
                 </div>
                 
                 <ul id="ranking-list" style="list-style:none; padding:0; margin:10px 0 20px 0; text-align:left; font-size:1.1rem; color:#fff; max-height:200px; overflow-y:auto;">

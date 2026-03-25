@@ -374,29 +374,9 @@ body {
     text-decoration: none !important;
 }
 
-/* スコア送信オーバーレイ */
-#submit-score-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(0,0,0,0.95);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
+#online-submit-area {
+    animation: fadeIn 0.3s ease-out;
 }
-#submit-score-overlay.hidden { display: none; }
-#submit-score-content {
-    background-color: #1a1a1a;
-    padding: 30px 20px;
-    border-radius: 12px;
-    border: 2px solid #ffb300;
-    text-align: center;
-    width: 90%;
-    max-width: 350px;
-    animation: popIn 0.3s ease-out;
-}
-#submit-score-content h2 { color: #ffb300; margin-bottom: 15px; }
 
 /* ミッションオーバーレイ */
 #mission-overlay {

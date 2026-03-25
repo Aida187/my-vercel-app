@@ -611,30 +611,21 @@ function finalizeReset() {
     location.reload();
 }
 
-// リセットボタン（ランキング登録含む）
+// リセットボタン
 const resetBtn = document.getElementById('reset-btn');
 if (resetBtn) {
     resetBtn.addEventListener('click', () => {
         const cp = getCombatPower();
-        if (confirm(`現在の戦闘力は「${cp}」です。\nデータを初期化して最初からやり直しますか？\n（オンラインランキングの登録もここから行えます）`)) {
+        if (confirm(`現在の戦闘力は「${cp}」です。\nデータを初期化して最初からやり直しますか？`)) {
             // ローカルランキングに保存
             saveRanking(cp);
-            
-            // オンラインスコア送信UIを表示
-            const submitOverlay = document.getElementById('submit-score-overlay');
-            if (submitOverlay) {
-                document.getElementById('submit-score-val').textContent = cp;
-                submitOverlay.classList.remove('hidden');
-            } else {
-                finalizeReset();
-            }
+            finalizeReset();
         }
     });
 }
 
-// オンラインスコア送信アクション
+// オンラインスコア送信アクション (ランキングタブ内)
 const submitScoreBtn = document.getElementById('submit-score-btn');
-const skipSubmitBtn = document.getElementById('skip-submit-btn');
 
 if (submitScoreBtn) {
     submitScoreBtn.addEventListener('click', async () => {
@@ -642,6 +633,7 @@ if (submitScoreBtn) {
         const name = nameInput.value.trim() || '名無しの冒険者';
         const cp = getCombatPower();
         
+        const originalText = submitScoreBtn.textContent;
         submitScoreBtn.disabled = true;
         submitScoreBtn.textContent = '送信中...';
         
@@ -653,20 +645,18 @@ if (submitScoreBtn) {
             });
             if (res.ok) {
                 alert('オンラインランキングに登録しました！');
+                renderRanking(); // 送信成功後にリスト更新
             } else {
                 throw new Error('API Error');
             }
         } catch (e) {
             console.error(e);
-            alert('スコアの送信に失敗しました。(Vercel KV連携未完了等)');
+            alert('送信失敗 (Vercel KV連携未完了の可能性があります)');
         }
         
-        finalizeReset();
+        submitScoreBtn.disabled = false;
+        submitScoreBtn.textContent = originalText;
     });
-}
-
-if (skipSubmitBtn) {
-    skipSubmitBtn.addEventListener('click', finalizeReset);
 }
 
 // ランキング表示処理
@@ -679,9 +669,11 @@ let currentRankingTab = 'local';
 
 async function renderRanking() {
     const list = document.getElementById('ranking-list');
+    const submitArea = document.getElementById('online-submit-area');
     list.innerHTML = '<li style="color:#aaa; text-align:center;">読み込み中...</li>';
 
     if (currentRankingTab === 'local') {
+        if (submitArea) submitArea.classList.add('hidden');
         loadRanking();
         list.innerHTML = '';
         if (!localRanking || localRanking.length === 0) {
@@ -696,6 +688,10 @@ async function renderRanking() {
         }
     } else {
         // オンライン
+        if (submitArea) {
+            document.getElementById('current-score-val').textContent = getCombatPower();
+            submitArea.classList.remove('hidden');
+        }
         try {
             const res = await fetch('/api/ranking');
             if (!res.ok) throw new Error('API Error');
