@@ -49,9 +49,11 @@ function getQualityRank(quality) {
 // セーブデータ（状態管理）
 let inventory = {}; 
 let equipped = { weapon: null, armor: null, accessory: null };
-let isBattling = false;
+// 各種フラグ・状態
 let stamina = MAX_STAMINA;
 let lastStaminaUpdate = Date.now();
+let isBattling = false;
+adTimerInterval = null; // adTimerIntervalはグローバルで宣言済みのため再代入のみ
 let combo = 0;
 let lastLoginDate = '';
 let consecutiveLoginDays = 0;
@@ -59,6 +61,7 @@ const RANKING_KEY = 'hacsura_local_ranking';
 let localRanking = [];
 let dailyMissions = { date: '', playCount: 0, synthCount: 0, claimed: [false, false] };
 let dailyBuff = null;
+let forbiddenLastPlayed = localStorage.getItem('hacsura_forbidden_date') || ''; // 禁断ダンジョン最終プレイ日
 
 // デイリーバフの抽選
 function generateDailyBuff() {
@@ -93,11 +96,43 @@ function updateBuffUI() {
 
 // 日次ミッションのリセットチェック
 function checkDailyMissionsReset() {
-    const today = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
-    if (dailyMissions.date !== today) {
-        dailyMissions = { date: today, playCount: 0, synthCount: 0, claimed: [false, false] };
+    const todayStr = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+    const lastDate = localStorage.getItem(DAILY_DATE_KEY);
+
+    if (lastDate !== todayStr) {
+        // 日付が変わったのでリセット
+        localStorage.setItem(DAILY_DATE_KEY, todayStr);
+        dailyMissions = { date: todayStr, playCount: 0, synthCount: 0, claimed: [false, false] }; // generateDailyMissionsの代わりに直接初期化
         generateDailyBuff(); // 新しい一日が始まった時にバフを抽選
+        
+        // 禁断ダンジョンのリセット
+        forbiddenLastPlayed = '';
+        localStorage.removeItem('hacsura_forbidden_date');
+        
         saveData();
+    }
+    
+    // 手動操作等の対策（フォールバック）
+    if (forbiddenLastPlayed && forbiddenLastPlayed !== todayStr) {
+        forbiddenLastPlayed = '';
+        localStorage.removeItem('hacsura_forbidden_date');
+    }
+
+    // renderMissions(); // renderMissionsはupdateMissionUIに相当するため、後で呼び出す
+    updateForbiddenUI();
+}
+
+// 禁断ダンジョンのUIボタン制御
+function updateForbiddenUI() {
+    const forbiddenBtn = document.getElementById('forbidden-dive-btn');
+    if (!forbiddenBtn) return;
+    const todayStr = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+    if (forbiddenLastPlayed === todayStr) {
+        forbiddenBtn.disabled = true;
+        forbiddenBtn.textContent = '💀 禁断ダンジョン (本日は挑戦済み)';
+    } else {
+        forbiddenBtn.disabled = false;
+        forbiddenBtn.textContent = '💀 禁断ダンジョンに挑む (1日1回)';
     }
 }
 
@@ -131,7 +166,8 @@ function saveData() {
         lastLoginDate,
         consecutiveLoginDays,
         dailyMissions,
-        dailyBuff
+        dailyBuff,
+        forbiddenLastPlayed // 追加
     }));
 }
 
@@ -150,6 +186,7 @@ function loadData() {
             consecutiveLoginDays = data.consecutiveLoginDays || 0;
             dailyMissions = data.dailyMissions || { date: '', playCount: 0, synthCount: 0, claimed: [false, false] };
             dailyBuff = data.dailyBuff || null;
+            forbiddenLastPlayed = data.forbiddenLastPlayed || ''; // 追加
         } catch (e) {
             console.error('Save data load error', e);
         }
@@ -177,14 +214,9 @@ function updateComboUI() {
 
 // 装備マスターデータ (type: weapon, armor, accessory)
 const equipmentDB = [
+    // --- N (ノーマル) ---
     { id: 'w1', name: '木の剣', type: 'weapon', rarity: 'N', atk: 5, def: 0, crit: 0 },
-    { id: 'w2', name: '鋼の剣', type: 'weapon', rarity: 'R', atk: 20, def: 0, crit: 0 },
-    { id: 'w3', name: 'ミスリルソード', type: 'weapon', rarity: 'SR', atk: 100, def: 0, crit: 0 },
-    { id: 'w4', name: 'エクスカリバー', type: 'weapon', rarity: 'SSR', atk: 500, def: 0, crit: 0 },
     { id: 'a1', name: '布の服', type: 'armor', rarity: 'N', atk: 0, def: 5, crit: 0 },
-    { id: 'a2', name: '革の鎧', type: 'armor', rarity: 'R', atk: 0, def: 20, crit: 0 },
-    { id: 'a3', name: '魔法の鎧', type: 'armor', rarity: 'SR', atk: 0, def: 100, crit: 0 },
-    { id: 'a4', name: '神竜の鎧', type: 'armor', rarity: 'SSR', atk: 0, def: 500, crit: 0 },
     { id: 'ac1', name: '鉄の指輪', type: 'accessory', rarity: 'N', atk: 2, def: 2, crit: 0 },
     { id: 'ac2', name: '力の指輪', type: 'accessory', rarity: 'R', atk: 10, def: 10, crit: 2 },
     { id: 'ac3', name: '闘神の指輪', type: 'accessory', rarity: 'SR', atk: 50, def: 50, crit: 5 },
@@ -610,6 +642,8 @@ if (adBtn) {
 // リセット処理の最終実行
 function finalizeReset() {
     localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(DAILY_DATE_KEY); // 追加
+    localStorage.removeItem('hacsura_forbidden_date'); // 追加
     location.reload();
 }
 
@@ -744,6 +778,260 @@ if (tabLocal && tabOnline) {
     });
 }
 
+function startForbiddenDungeon() {
+    if (isBattling) return;
+
+    isBattling = true;
+    character.classList.add('anim-attack');
+    gameContainer.classList.add('shake');
+    
+    const fBtn = document.getElementById('forbidden-dive-btn');
+    fBtn.disabled = true;
+    fBtn.textContent = '😈 禁断の地を探索中...';
+    
+    battleLog.innerHTML = '<p>▶ <span style="color:#ff5252;">禍々しいオーラを感じる...</span></p>';
+    
+    setTimeout(() => {
+        battleLog.innerHTML += '<p>▶ <span style="font-weight:bold; font-size:1.1rem; color:#ff1744;">凶悪なボスが立ち塞がった！！</span></p>';
+    }, 1500);
+
+    setTimeout(() => {
+        // 勝敗判定 (勝率30〜50%。プレイヤーの戦闘力に応じて変動)
+        const cp = getCombatPower();
+        // ベース25%、戦闘力が高いほど最大50%に近づく（戦闘力5000で+25%）
+        let winRate = 0.25 + Math.min(0.25, (cp || 0) / 5000); 
+        const isWin = Math.random() < winRate;
+
+        isBattling = false;
+        character.classList.remove('anim-attack');
+        gameContainer.classList.remove('shake');
+        
+        fBtn.textContent = '💀 禁断ダンジョン (本日は挑戦済み)';
+        
+        if (isWin) {
+            // 勝利処理
+            battleLog.innerHTML += '<p style="color:#ffb300; font-weight:bold;">▶ 激闘の末、ボスを打ち倒した！！！</p>';
+            const result = processForbiddenDrop();
+            showResult(result.item, result);
+        } else {
+            // 敗北処理
+            battleLog.innerHTML += '<p style="color:#ff5252;">▶ ボスの圧倒的な力の前に敗北した...</p>';
+            processForbiddenDefeat();
+        }
+    }, 4000); // 通常より少し長い4秒の戦闘
+}
+
+function processForbiddenDrop() {
+    // 0.1%の確率でUR確定
+    const isUR = Math.random() < 0.001;
+    let pool = [];
+    
+    if (isUR) {
+        pool = equipmentDB.filter(e => e.rarity === 'UR');
+    } else {
+        pool = equipmentDB.filter(e => e.rarity === 'SSR');
+    }
+    
+    const baseItem = pool[Math.floor(Math.random() * pool.length)];
+    
+    // 品質は禁断専用に非常に高い（1.3倍〜2.0倍）
+    const multiplier = 1.3 + Math.random() * 0.7;
+    const droppedItem = {
+        ...baseItem,
+        quality: multiplier,
+        atk: Math.round(baseItem.atk * multiplier),
+        def: Math.round(baseItem.def * multiplier),
+        crit: baseItem.crit
+    };
+    
+    let isNew = false;
+    let isEquipped = false;
+    let statusText = '';
+    
+    if (inventory[droppedItem.id]) {
+        // 既存装備の場合は合成レベルアップ
+        inventory[droppedItem.id].level += 1;
+        
+        const oldAtk = inventory[droppedItem.id].atk || 0;
+        const oldDef = inventory[droppedItem.id].def || 0;
+        const oldQuality = inventory[droppedItem.id].quality || 1.0;
+        
+        if (droppedItem.atk > oldAtk || droppedItem.def > oldDef) {
+            inventory[droppedItem.id].atk = Math.max(oldAtk, droppedItem.atk);
+            inventory[droppedItem.id].def = Math.max(oldDef, droppedItem.def);
+            inventory[droppedItem.id].quality = Math.max(oldQuality, droppedItem.quality);
+            statusText = `合成大成功！Lv${inventory[droppedItem.id].level} (ステータス超絶更新!)`;
+        } else {
+            statusText = `合成成功！Lv${inventory[droppedItem.id].level}`;
+        }
+        
+    } else {
+        // 新規取得
+        inventory[droppedItem.id] = { 
+            level: 1, 
+            atk: droppedItem.atk, 
+            def: droppedItem.def, 
+            quality: droppedItem.quality 
+        };
+        isNew = true;
+        statusText = 'NEW!';
+    }
+    
+    // 自動装備処理
+    const eqTarget = equipped[droppedItem.type];
+    if (!eqTarget) {
+        equipped[droppedItem.type] = droppedItem.id;
+        isEquipped = true;
+    } else {
+        const currentItem = equipmentDB.find(e => e.id === eqTarget);
+        const currentRarityScore = { 'N':1, 'R':2, 'SR':3, 'SSR':4, 'UR':5 }[currentItem.rarity];
+        const newRarityScore = { 'N':1, 'R':2, 'SR':3, 'SSR':4, 'UR':5 }[droppedItem.rarity];
+        if (newRarityScore > currentRarityScore) {
+            equipped[droppedItem.type] = droppedItem.id;
+            isEquipped = true;
+        }
+    }
+    
+    saveData();
+    updateStatsUI();
+    
+    return {
+        item: droppedItem,
+        isNew: isNew,
+        isEquipped: isEquipped,
+        statusText: statusText
+    };
+}
+
+function processForbiddenDefeat() {
+    const equippedItemIds = [equipped.weapon, equipped.armor, equipped.accessory].filter(id => id !== null);
+    
+    if (equippedItemIds.length === 0) {
+        alert('【禁断ダンジョン敗北】\nボスの猛攻を受けたが、失う装備がなかったため命拾いした...！');
+        return;
+    }
+    
+    if (equippedItemIds.length === 1) {
+        alert('【禁断ダンジョン敗北】\nボスの情けにより、たった一つの装備のロストは免れた...！');
+        return;
+    }
+
+    // 最強装備を1つ選定して保護（スコア算出）
+    let strongestId = null;
+    let maxScore = -1;
+    
+    equippedItemIds.forEach(id => {
+        const inv = inventory[id];
+        const base = equipmentDB.find(e => e.id === id) || { rarity: 'N' };
+        const rarityScore = { 'N':1, 'R':2, 'SR':3, 'SSR':4, 'UR':5 }[base.rarity] || 1;
+        const score = (inv.atk || 0) + (inv.def || 0) + ((inv.level || 1) * 10) + (rarityScore * 100);
+        if (score > maxScore) {
+            maxScore = score;
+            strongestId = id;
+        }
+    });
+    
+    // 最強装備を除外したリストからランダムでロスト
+    const lostCandidates = equippedItemIds.filter(id => id !== strongestId);
+    const lostId = lostCandidates[Math.floor(Math.random() * lostCandidates.length)];
+    const lostBase = equipmentDB.find(e => e.id === lostId) || { name: '不明な装備', type: 'weapon' };
+    
+    // ロスト実行
+    delete inventory[lostId];
+    equipped[lostBase.type] = null;
+    
+    saveData();
+    updateStatsUI();
+    
+    // ロスト画面フラッシュ演出
+    const flash = document.createElement('div');
+    flash.style.position = 'absolute';
+    flash.style.top = '0'; flash.style.left = '0'; flash.style.right = '0'; flash.style.bottom = '0';
+    flash.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
+    flash.style.zIndex = '9999';
+    flash.style.pointerEvents = 'none';
+    flash.style.transition = 'opacity 2s ease-out';
+    document.body.appendChild(flash);
+    setTimeout(() => {
+        flash.style.opacity = '0';
+        setTimeout(() => flash.remove(), 2000);
+    }, 100);
+    
+    // 敗北用リザルト画面の表示
+    const resultOverlay = document.getElementById('result-overlay');
+    resultOverlay.querySelector('h2').textContent = '【大敗北】';
+    resultOverlay.querySelector('h2').style.color = '#ff5252';
+    
+    document.getElementById('drop-rarity').textContent = 'LOST';
+    document.getElementById('drop-rarity').className = 'rarity-ur';
+    document.getElementById('drop-name').innerHTML = `ボスの圧倒的な力により<br><span style="color:#ff5252; font-size:1.5rem; margin-top:10px; display:inline-block;">${lostBase.name}</span><br>が破壊された...`;
+    
+    const dropQuality = document.getElementById('drop-quality');
+    if (dropQuality) dropQuality.style.display = 'none';
+
+    const existingStatus = document.getElementById('drop-status-text');
+    if (existingStatus) existingStatus.remove();
+
+    const shareXBtn = document.getElementById('share-x-btn');
+    if (shareXBtn) {
+        shareXBtn.classList.remove('hidden');
+        shareXBtn.dataset.type = 'forbidden_loss';
+        shareXBtn.dataset.itemName = lostBase.name;
+    }
+    
+    resultOverlay.classList.remove('hidden');
+}
+
+// 禁断ダンジョン開始ロジック（イベントリスナー）
+const forbiddenBtn = document.getElementById('forbidden-dive-btn');
+if (forbiddenBtn) {
+    forbiddenBtn.addEventListener('click', () => {
+        const todayStr = new Date().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
+        if (forbiddenLastPlayed === todayStr) {
+            alert('本日の挑戦は終了しています。また明日挑戦してください。');
+            return;
+        }
+        
+        if (isBattling) return;
+        
+        const confirmMsg = "【警告：禁断ダンジョン】\n" +
+                           "通常の何倍も強力な敵が出現します。\n" +
+                           "勝利すればSSR確定＋超レア装備のチャンスがありますが、\n" +
+                           "敗北すると「現在装備しているアイテムをランダムに1つ失う」強烈なペナルティがあります。\n\n" +
+                           "本当に挑戦しますか？";
+                           
+        if (confirm(confirmMsg)) {
+            // 回数消費を記録して戦闘開始
+            forbiddenLastPlayed = todayStr;
+            localStorage.setItem('hacsura_forbidden_date', forbiddenLastPlayed);
+            updateForbiddenUI();
+            saveData();
+            
+            startForbiddenDungeon();
+        }
+    });
+}
+
+// Xシェアボタンの処理
+if (shareXBtn) {
+    shareXBtn.addEventListener('click', () => {
+        let text = '';
+        const type = shareXBtn.dataset.type;
+        const itemName = shareXBtn.dataset.itemName;
+        const rank = shareXBtn.dataset.rank;
+
+        if (type === 'forbidden_loss') {
+            text = `【禁断の領域で大敗北...】\n強敵に敗れ「${itemName}」を失った...\n誰か俺の仇を討ってくれ...！！\n#30秒ダンジョン #ハクスラ`;
+        } else {
+            text = `【神引き！】\n「${itemName}」(${rank})をゲット！\n無限装備ガチャで最強を目指す！\n#30秒ダンジョン #ハクスラ`;
+        }
+        
+        const url = encodeURIComponent('https://my-vercel-app-4ogr.vercel.app/');
+        const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
+        window.open(shareUrl, '_blank');
+    });
+}
+
 // 初期化とタイマー
 loadData();   
 loadRanking();   
@@ -753,6 +1041,7 @@ updateStaminaUI();
 updateComboUI();
 updateBuffUI(); // 追加
 checkLoginBonus(); // ログインボーナスの確認と発火
+updateForbiddenUI(); // 禁断ダンジョンUIの初期化
 setInterval(checkStaminaRecovery, 1000); // 毎秒スタミナ回復確認
 
 // イベントリスナー
