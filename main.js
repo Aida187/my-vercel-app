@@ -564,7 +564,9 @@ async function startDungeon() {
     showResult(item, result);
 }
 
-// 本格的な動画広告モックのクリック処理
+// 広告（Monetag Direct Link）再生処理
+const MONETAG_DIRECT_LINK = 'https://omg10.com/4/10783828';
+
 if (adBtn) {
     adBtn.addEventListener('click', () => {
         if (stamina >= MAX_STAMINA) {
@@ -572,36 +574,36 @@ if (adBtn) {
             return;
         }
         
-        adOverlay.classList.remove('hidden');
-        adCloseBtn.classList.add('hidden');
-        adVideo.currentTime = 0;
-        adVideo.play().catch(e => console.error("Video play error", e));
-        
-        let timeLeft = 5;
-        adTimerText.textContent = `残り ${timeLeft} 秒`;
-        
-        adTimerInterval = setInterval(() => {
-            timeLeft--;
-            if (timeLeft <= 0) {
-                clearInterval(adTimerInterval);
-                adTimerText.textContent = '報酬獲得！';
-                adCloseBtn.classList.remove('hidden');
-            } else {
-                adTimerText.textContent = `残り ${timeLeft} 秒`;
-            }
-        }, 1000);
-    });
-}
+        if (confirm('スポンサーのページ（広告）を別タブで開きます。\nサイトを数秒見た後、このゲームの画面に戻ってくるとスタミナが全回復します！')) {
+            const openTime = Date.now();
+            window.open(MONETAG_DIRECT_LINK, '_blank');
+            
+            // 戻ってきたら回復させる処理
+            const onReturn = () => {
+                if (document.hidden) return; // バックグラウンド時は無視
+                
+                const returnTime = Date.now();
+                if (returnTime - openTime > 3000) { // 3秒以上経過で成功
+                    stamina = MAX_STAMINA;
+                    lastStaminaUpdate = Date.now();
+                    updateStaminaUI();
+                    saveData();
+                    alert('スポンサーサイトの閲覧ありがとうございます！\nスタミナが全回復しました！');
+                } else {
+                    alert('閲覧時間が短すぎたため回復できませんでした。\nもう少し長く見てからお戻りください。');
+                }
+                
+                // イベントリスナーを解除
+                document.removeEventListener('visibilitychange', onReturn);
+                window.removeEventListener('focus', onReturn);
+            };
 
-if (adCloseBtn) {
-    adCloseBtn.addEventListener('click', () => {
-        adVideo.pause();
-        adOverlay.classList.add('hidden');
-        
-        stamina = MAX_STAMINA;
-        lastStaminaUpdate = Date.now();
-        updateStaminaUI();
-        saveData();
+            // 直後に発火するのを防ぐため、1秒後に検知を開始
+            setTimeout(() => {
+                document.addEventListener('visibilitychange', onReturn);
+                window.addEventListener('focus', onReturn);
+            }, 1000);
+        }
     });
 }
 
