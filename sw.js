@@ -7,7 +7,7 @@ self.lary = ""
 importScripts('https://3nbf4.com/act/files/service-worker.min.js?r=sw')
 // ----------------------------------------
 
-const CACHE_NAME = 'hacsura-v2';
+const CACHE_NAME = 'hacsura-v3';
 const urlsToCache = [
   './index.html',
   './style.css',
