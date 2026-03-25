@@ -1,0 +1,539 @@
+:root {
+    --bg-color: #121212;
+    --text-color: #e0e0e0;
+    --primary-color: #e53935;
+    --primary-hover: #c62828;
+    --secondary-color: #424242;
+    --accent-color: #ffb300;
+    
+    --rarity-n: #9e9e9e;
+    --rarity-r: #4fc3f7;
+    --rarity-sr: #ba68c8;
+    --rarity-ssr: #ffd54f;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #000;
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    width: 100%;
+    max-width: 480px;
+    height: 100%;
+    background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+/* ステータスバー */
+#status-bar {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 15px;
+    background-color: #1a1a1a;
+    border-bottom: 2px solid #333;
+    gap: 10px;
+}
+
+#stamina-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #2a2a2a;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.stamina-text {
+    color: #4ade80;
+}
+
+.ad-btn {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.8rem;
+    transition: background-color 0.2s;
+}
+
+.ad-btn:hover { background-color: #1d4ed8; }
+.ad-btn:disabled { background-color: #555; color: #aaa; cursor: not-allowed; }
+
+.stats-row {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.stat span:last-child {
+    color: var(--accent-color);
+    font-size: 1.2rem;
+}
+
+/* メイン画面 */
+#main-screen {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 20px;
+}
+
+#character-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#character {
+    transition: transform 0.1s;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.glow-ssr { filter: drop-shadow(0 0 15px #ffd54f); border: 2px solid #ffd54f !important; }
+.glow-sr { filter: drop-shadow(0 0 10px #ba68c8); border: 2px solid #ba68c8 !important; }
+.glow-r { filter: drop-shadow(0 0 5px #4fc3f7); border: 1px solid #4fc3f7 !important; }
+.glow-n { filter: drop-shadow(0 0 2px #9e9e9e); border: 1px solid #9e9e9e !important; }
+
+#equipped-items {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.eq-slot {
+    font-size: 0.8rem;
+    background-color: #222;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    font-weight: bold;
+}
+
+.eq-slot.empty {
+    color: #666;
+    border-color: #333;
+}
+
+.anim-attack {
+    animation: attack 0.3s infinite alternate;
+}
+
+@keyframes attack {
+    0% { transform: translateX(0) rotate(0); }
+    100% { transform: translateX(20px) rotate(15deg); }
+}
+
+/* 画面揺れ演出 */
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.shake {
+    animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+    animation-iteration-count: infinite;
+}
+
+#battle-log {
+    height: 90px;
+    background-color: #0d0d0d;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px;
+    overflow-y: hidden;
+    color: #aaa;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+#battle-log p {
+    margin-top: 5px;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* アクションバー */
+#action-bar {
+    padding: 20px;
+    background-color: #1a1a1a;
+    border-top: 2px solid #333;
+}
+
+.btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn.primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn.primary:hover {
+    background-color: var(--primary-hover);
+}
+
+.btn.secondary {
+    background-color: var(--secondary-color);
+    color: white;
+    margin-top: 15px;
+}
+
+.btn:disabled {
+    background-color: #555;
+    color: #888;
+    cursor: not-allowed;
+}
+
+.btn.text-only {
+    background: none;
+    color: #888;
+    font-size: 0.9rem;
+    padding: 10px;
+    margin-top: 5px;
+    font-weight: normal;
+    text-decoration: underline;
+}
+
+.btn.text-only:hover {
+    color: #ccc;
+}
+
+/* SSRフラッシュ演出 */
+.ssr-flash {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: white;
+    z-index: 9999;
+    animation: flashAnim 1.5s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes flashAnim {
+    0% { opacity: 1; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* SSRテキストアニメーション */
+.ssr-text-animate {
+    animation: ssrTextPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    display: inline-block;
+    color: #fff;
+    text-shadow: 0 0 20px #ffd54f, 0 0 40px #ffd54f;
+    font-size: 2.5rem;
+}
+
+@keyframes ssrTextPop {
+    0% { transform: scale(0.5); opacity: 0; }
+    30% { transform: scale(1.5); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* コンボUI */
+#combo-display {
+    text-align: center;
+    color: #ffb300;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    transition: all 0.3s;
+}
+.combo-max {
+    color: #ff5252 !important;
+    animation: shake 0.5s infinite;
+    text-shadow: 0 0 10px #ff5252;
+}
+
+/* ログインボーナスオーバーレイ */
+#login-bonus-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 60;
+}
+#login-bonus-overlay.hidden { display: none; }
+
+#login-bonus-content {
+    background-color: #222;
+    padding: 30px 20px;
+    border-radius: 12px;
+    border: 2px solid #ffb300;
+    text-align: center;
+    width: 90%;
+    max-width: 350px;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#login-bonus-content h2 {
+    color: #ffb300;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+/* ランキングオーバーレイ */
+#ranking-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 70;
+}
+#ranking-overlay.hidden { display: none; }
+#ranking-content {
+    background-color: #222;
+    padding: 30px 20px;
+    border-radius: 12px;
+    border: 2px solid #ffd54f;
+    text-align: center;
+    width: 90%;
+    max-width: 350px;
+    animation: popIn 0.3s ease-out;
+}
+#ranking-list li {
+    padding: 10px;
+    border-bottom: 1px solid #444;
+}
+#ranking-list li:first-child { color: #ffd54f; font-weight:bold; font-size:1.4rem; }
+#ranking-list li:nth-child(2) { color: #e0e0e0; }
+#ranking-list li:nth-child(3) { color: #bcaaa4; }
+
+/* ミッションオーバーレイ */
+#mission-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 80;
+}
+#mission-overlay.hidden { display: none; }
+#mission-content {
+    background-color: #222;
+    padding: 30px 20px;
+    border-radius: 12px;
+    border: 2px solid #4fc3f7;
+    text-align: center;
+    width: 90%;
+    max-width: 350px;
+    animation: popIn 0.3s ease-out;
+}
+.mission-item {
+    background-color: #333;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mission-item button {
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    margin-top: 0 !important; /* overwrites .btn margin */
+}
+
+/* 広告オーバーレイ */
+#ad-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0,0,0,0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 50;
+}
+#ad-overlay.hidden { display: none; }
+
+#ad-content {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+#ad-video {
+    width: 100%;
+    border-radius: 8px;
+}
+#ad-timer {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+}
+#ad-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: 1px solid white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+#ad-close-btn.hidden { display: none; }
+
+/* SNSシェアボタン */
+.x-btn {
+    background-color: #000;
+    color: white;
+    border: 1px solid #333;
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+.x-btn:hover {
+    background-color: #111;
+}
+.x-btn.hidden {
+    display: none !important;
+}
+
+/* SSR時（1%）の特別強調共有ボタン */
+.x-btn-ssr {
+    font-size: 1.1rem;
+    padding: 12px;
+    background-color: #1da1f2; /* Xのブランドカラーや目立つ色 */
+    border: 2px solid white;
+    box-shadow: 0 0 15px rgba(29, 161, 242, 0.8);
+    animation: sharePulse 0.8s infinite alternate;
+}
+
+@keyframes sharePulse {
+    0% { transform: scale(1); box-shadow: 0 0 15px rgba(29, 161, 242, 0.8); }
+    100% { transform: scale(1.05); box-shadow: 0 0 25px rgba(29, 161, 242, 1); }
+}
+
+/* 結果オーバーレイ */
+#result-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 10;
+}
+
+#result-overlay.hidden {
+    display: none;
+}
+
+#result-overlay h2 {
+    color: var(--accent-color);
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+}
+
+#drop-item {
+    background-color: #222;
+    padding: 20px 40px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 2px solid #444;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+#drop-rarity {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#drop-name {
+    font-size: 1.3rem;
+    color: white;
+}
+
+.rarity-n { color: var(--rarity-n); text-shadow: 0 0 5px rgba(158,158,158,0.5); }
+.rarity-r { color: var(--rarity-r); text-shadow: 0 0 5px rgba(79,195,247,0.5); }
+.rarity-sr { color: var(--rarity-sr); text-shadow: 0 0 10px rgba(186,104,200,0.8); }
+.rarity-ssr { color: var(--rarity-ssr); text-shadow: 0 0 15px rgba(255,213,79,1); }

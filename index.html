@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>30秒ダンジョン：無限装備ガチャ</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/hero.png">
+</head>
+<body>
+    <div id="game-container">
+        <!-- 上：ステータス -->
+        <header id="status-bar">
+            <!-- 追加：マネタイズ（スタミナ）枠 -->
+            <div id="stamina-container">
+                <span class="stamina-text">⚡スタミナ <span id="stamina-count">10/10</span></span>
+                <button id="ad-btn" class="ad-btn">🎥 広告で回復</button>
+            </div>
+            <div class="stats-row">
+                <div class="stat"><span>ATK</span><span id="stat-atk">10</span></div>
+                <div class="stat"><span>DEF</span><span id="stat-def">10</span></div>
+                <div class="stat"><span>CRIT</span><span id="stat-crit">5%</span></div>
+            </div>
+        </header>
+
+        <!-- 中央：キャラ・演出周り -->
+        <main id="main-screen">
+            <div id="character-area">
+                <div id="character" class="idle">
+                    <img src="images/hero.png" alt="Hero" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid #ffb300; box-shadow:0 0 15px rgba(255,179,0,0.5);">
+                </div>
+                <!-- 追加：装備表示用UI -->
+                <div id="equipped-items">
+                    <span id="eq-weapon" class="eq-slot empty">武器: なし</span>
+                    <span id="eq-armor" class="eq-slot empty">防具: なし</span>
+                    <span id="eq-accessory" class="eq-slot empty">装飾: なし</span>
+                </div>
+            </div>
+            
+            <div id="battle-log">
+                <p>準備完了。ダンジョンに潜ってください。</p>
+            </div>
+
+            <!-- ログインボーナスオーバーレイ -->
+        <div id="login-bonus-overlay" class="hidden">
+            <div id="login-bonus-content">
+                <h2>🎁 ログインボーナス！</h2>
+                <p>本日のログインありがとうございます！<br>スタミナが満タンになりました！</p>
+                <div id="login-bonus-item" style="margin:20px 0;">
+                    <!-- ここにボーナスアイテム表示 -->
+                </div>
+                <button id="close-login-bonus-btn" class="btn primary">受け取る</button>
+            </div>
+        </div>
+
+        <!-- ランキングオーバーレイ -->
+        <div id="ranking-overlay" class="hidden">
+            <div id="ranking-content">
+                <h2>🏆 殿堂入りランキング</h2>
+                <div style="color:#aaa; font-size:0.8rem;">※戦闘力 = ATK + DEF + (CRIT×10)</div>
+                <ul id="ranking-list" style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:1.2rem; color:#fff;">
+                    <li>1位: 0</li>
+                    <li>2位: 0</li>
+                    <li>3位: 0</li>
+                </ul>
+                <button id="close-ranking-btn" class="btn secondary">閉じる</button>
+            </div>
+        </div>
+
+        <!-- ミッションオーバーレイ -->
+        <div id="mission-overlay" class="hidden">
+            <div id="mission-content">
+                <h2>📋 デイリーミッション</h2>
+                <ul id="mission-list" style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:1rem; color:#fff;">
+                    <!-- JSで動的生成 -->
+                </ul>
+                <button id="close-mission-btn" class="btn secondary">閉じる</button>
+            </div>
+        </div>
+
+        <!-- 広告動画モックオーバーレイ -->
+        <div id="ad-overlay" class="hidden">
+            <div id="ad-content">
+                <!-- 著作権フリーのサンプル動画 -->
+                <video id="ad-video" src="https://www.w3schools.com/html/mov_bbb.mp4" playsinline muted loop></video>
+                <div id="ad-timer">残り 5 秒</div>
+                <button id="ad-close-btn" class="hidden">✕ 閉じる</button>
+            </div>
+            <div style="color:white; margin-top:10px; font-size:12px;">※全画面リワード広告のプレースホルダー</div>
+        </div>
+
+        <!-- 結果オーバーレイ -->
+        <div id="result-overlay" class="hidden">
+            <h2>ダンジョン踏破！</h2>
+                <div id="drop-item">
+                    <span id="drop-rarity" class="rarity-n">N</span>
+                    <img id="drop-img" src="" alt="item" style="display:none; width:80px; height:80px; margin:10px 0; border-radius:10px; object-fit:cover;">
+                    <span id="drop-name">木の剣</span>
+                </div>
+            <!-- 追加：SSR・SR用シェアボタン -->
+            <button id="share-x-btn" class="btn x-btn hidden">𝕏 ポストして自慢する</button>
+            <button id="close-result-btn" class="btn secondary">戻る</button>
+            </div>
+        </main>
+
+        <!-- 下：アクションボタン -->
+        <footer id="action-bar">
+            <!-- 追加：環境バフ表示 -->
+            <div id="daily-buff-display" style="text-align:center; font-size:0.85rem; margin-bottom:5px; font-weight:bold;">
+                <span id="buff-text">🌟 本日の環境: 通常</span>
+            </div>
+            <!-- 追加：コンボ表示UI -->
+            <div id="combo-display">
+                🔥 連続プレイボーナス: <span id="combo-count">0</span> / 3
+            </div>
+            <button id="dive-btn" class="btn primary">⚔️ 潜る (スタミナ-1)</button>
+            <div style="display:flex; justify-content:space-between; margin-top:5px; flex-wrap:wrap; gap:5px;">
+                <button id="mission-btn" class="btn text-only" style="flex:1;">📋 ミッション</button>
+                <button id="ranking-btn" class="btn text-only" style="flex:1;">🏆 ランキング</button>
+                <button id="reset-btn" class="btn text-only" style="flex:1;">🔄 リセット</button>
+            </div>
+        </footer>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>

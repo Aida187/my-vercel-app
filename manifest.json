@@ -1,0 +1,17 @@
+{
+  "name": "30秒ダンジョン：無限装備ガチャ",
+  "short_name": "30秒ハクスラ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#e53935",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "images/hero.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
