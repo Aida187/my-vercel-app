@@ -37,6 +37,15 @@ const MAX_STAMINA = 10;
 const STAMINA_RECOVERY_MS = 10000; // テスト用に10秒で1回復
 const SAVE_KEY = 'hacsura_save_data';
 
+// 品質ランク判定関数（個体値可視化）
+function getQualityRank(quality) {
+    if (quality >= 1.4) return { rank: 'S', name: 'Rank S', class: 'rank-s' };
+    if (quality >= 1.2) return { rank: 'A', name: 'Rank A', class: 'rank-a' };
+    if (quality >= 1.0) return { rank: 'B', name: 'Rank B', class: 'rank-b' };
+    if (quality >= 0.9) return { rank: 'C', name: 'Rank C', class: 'rank-c' };
+    return { rank: 'D', name: 'Rank D', class: 'rank-d' };
+}
+
 // セーブデータ（状態管理）
 let inventory = {}; 
 let equipped = { weapon: null, armor: null, accessory: null };
@@ -204,7 +213,21 @@ function generateDrop(isBonus) {
     }
 
     const pool = equipmentDB.filter(e => e.rarity === rarity);
-    return pool[Math.floor(Math.random() * pool.length)];
+    const baseItem = pool[Math.floor(Math.random() * pool.length)];
+
+    // 個体値（Quality）の抽選: 0.8倍 〜 1.5倍の範囲でランダムに変動
+    // SSRは 1.1倍 〜 1.8倍 に補正して「外れ感」を減らす
+    const minM = (rarity === 'SSR') ? 1.1 : 0.8;
+    const maxM = (rarity === 'SSR') ? 1.8 : 1.5;
+    const multiplier = minM + Math.random() * (maxM - minM);
+
+    return {
+        ...baseItem,
+        quality: multiplier,
+        atk: Math.round(baseItem.atk * multiplier),
+        def: Math.round(baseItem.def * multiplier),
+        crit: baseItem.crit // クリティカル率は固定（厳選しすぎを防ぐため）
+    };
 }
 
 // ログ追加
@@ -253,11 +276,12 @@ function updateStatsUI() {
     ['weapon', 'armor', 'accessory'].forEach(type => {
         const itemId = equipped[type];
         if (itemId) {
-            const item = equipmentDB.find(e => e.id === itemId);
-            const level = inventory[itemId].level;
-            totalAtk += item.atk * level;
-            totalDef += item.def * level;
-            totalCrit += item.crit * level;
+            const base = equipmentDB.find(e => e.id === itemId);
+            const inv = inventory[itemId];
+            // 基礎値（個体値反映済） + レベルボーナス
+            totalAtk += (inv.atk || base.atk) + (inv.level - 1) * 2;
+            totalDef += (inv.def || base.def) + (inv.level - 1) * 2;
+            totalCrit += base.crit;
         }
     });
 
@@ -270,10 +294,11 @@ function updateStatsUI() {
         if (itemId) {
             const item = equipmentDB.find(e => e.id === itemId);
             const level = inventory[itemId].level;
-            el.textContent = `${label}: ${item.name} Lv${level}`;
+            const rInfo = getQualityRank(inventory[itemId].quality || 1.0);
+            el.innerHTML = `${label}: ${item.name} Lv${level} <span class="${rInfo.class}">[${rInfo.rank}]</span>`;
             el.className = `eq-slot rarity-${item.rarity.toLowerCase()}`;
         } else {
-            el.textContent = `${label}: なし`;
+            el.innerHTML = `${label}: なし`;
             el.className = 'eq-slot empty';
         }
     };
@@ -287,38 +312,68 @@ function updateStatsUI() {
 function processDrop(item) {
     let isNew = false;
     let level = 1;
+    let statusText = '';
 
     if (inventory[item.id]) {
         // バフが「合成2倍」なら2レベルアップ
         const gain = (dailyBuff && dailyBuff.type === 'DOUBLE_SYNTH') ? 2 : 1;
         inventory[item.id].level += gain;
         level = inventory[item.id].level;
+        
+        // 個体値の厳選: 拾ったアイテムの方がATKかDEFが高ければ「更新」
+        const oldAtk = inventory[item.id].atk || 0;
+        const oldDef = inventory[item.id].def || 0;
+        const oldQuality = inventory[item.id].quality || 1.0;
+        
+        if (item.atk > oldAtk || item.def > oldDef) {
+            inventory[item.id].atk = Math.max(oldAtk, item.atk);
+            inventory[item.id].def = Math.max(oldDef, item.def);
+            inventory[item.id].quality = Math.max(oldQuality, item.quality);
+            const r = getQualityRank(inventory[item.id].quality);
+            statusText = `基礎ステ更新！ (${r.name})`;
+        } else {
+            const r = getQualityRank(oldQuality);
+            statusText = `Lvアップ！ (既存維持: ${r.name})`;
+        }
+        
         dailyMissions.synthCount++; // ミッション：合成回数
     } else {
-        inventory[item.id] = { level: 1 };
+        inventory[item.id] = { 
+            level: 1, 
+            atk: item.atk, 
+            def: item.def, 
+            quality: item.quality 
+        };
         isNew = true;
+        const r = getQualityRank(item.quality);
+        statusText = `新規獲得！ (${r.name})`;
+        level = 1;
     }
 
-    const currentEqId = equipped[item.type];
-    const itemScore = (item.atk + item.def + item.crit) * level;
-    
+    // 自動装備ロジック: 現在装備しているものより強ければ自動で上書き
     let isEquipped = false;
-    if (!currentEqId) {
+    const currentId = equipped[item.type];
+    
+    const getPower = (id) => {
+        if (!id) return -1;
+        const inv = inventory[id];
+        const base = equipmentDB.find(e => e.id === id);
+        const curAtk = (inv.atk || base.atk) + (inv.level - 1) * 2;
+        const curDef = (inv.def || base.def) + (inv.level - 1) * 2;
+        return curAtk + curDef;
+    };
+
+    const currentPower = getPower(currentId);
+    const newPower = (inventory[item.id].atk) + (inventory[item.id].level - 1) * 2 + (inventory[item.id].def);
+
+    if (newPower > currentPower) {
         equipped[item.type] = item.id;
         isEquipped = true;
-    } else {
-        const currentEq = equipmentDB.find(e => e.id === currentEqId);
-        const currentLevel = inventory[currentEqId].level;
-        const currentScore = (currentEq.atk + currentEq.def + currentEq.crit) * currentLevel;
-        if (itemScore > currentScore || currentEqId === item.id) {
-            equipped[item.type] = item.id;
-            isEquipped = true;
-        }
     }
 
     updateStatsUI();
     saveData();
-    return { isNew, level, isEquipped };
+    return { isNew, level, isEquipped, statusText };
 }
 
 // SNSテキスト自動生成ロジック
@@ -386,15 +441,24 @@ function showResult(item, result) {
     if (!result.isNew) nameText += ` Lv${result.level}`;
     dropName.textContent = nameText;
     
-    let statusText = result.isNew ? '✨ 新規獲得！' : '🔄 合成（レベルアップ）！';
-    if (result.isEquipped && result.isNew) statusText += ' ➡ 自動装備しました';
+    let statusText = result.statusText;
+    if (result.isEquipped && result.isNew) statusText += ' ➡ 自動装備';
+    
+    // 品質ランクのバッジ表示
+    const dropQuality = document.getElementById('drop-quality');
+    if (dropQuality) {
+        const qRank = getQualityRank(item.quality);
+        dropQuality.textContent = qRank.name;
+        dropQuality.className = `quality-badge ${qRank.class}`;
+        dropQuality.style.display = 'inline-block';
+    }
     
     const existingStatus = document.getElementById('drop-status-text');
     if (existingStatus) existingStatus.remove();
     
     const p = document.createElement('p');
     p.id = 'drop-status-text';
-    p.textContent = statusText;
+    p.innerHTML = `${statusText}<br><span style="color:#aaa; font-size:0.8rem;">ATK: ${item.atk} / DEF: ${item.def}</span>`;
     p.style.color = '#ffb300';
     p.style.marginTop = '15px';
     p.style.fontWeight = 'bold';
@@ -541,40 +605,144 @@ if (adCloseBtn) {
     });
 }
 
+// リセット処理の最終実行
+function finalizeReset() {
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+}
+
 // リセットボタン（ランキング登録含む）
 const resetBtn = document.getElementById('reset-btn');
 if (resetBtn) {
     resetBtn.addEventListener('click', () => {
         const cp = getCombatPower();
-        if (confirm(`現在の戦闘力は「${cp}」です。\n今回の記録を殿堂入りランキングに保存し、データを初期化して最初からやり直しますか？`)) {
+        if (confirm(`現在の戦闘力は「${cp}」です。\nデータを初期化して最初からやり直しますか？\n（オンラインランキングの登録もここから行えます）`)) {
+            // ローカルランキングに保存
             saveRanking(cp);
-            localStorage.removeItem(SAVE_KEY);
-            location.reload();
+            
+            // オンラインスコア送信UIを表示
+            const submitOverlay = document.getElementById('submit-score-overlay');
+            if (submitOverlay) {
+                document.getElementById('submit-score-val').textContent = cp;
+                submitOverlay.classList.remove('hidden');
+            } else {
+                finalizeReset();
+            }
         }
     });
+}
+
+// オンラインスコア送信アクション
+const submitScoreBtn = document.getElementById('submit-score-btn');
+const skipSubmitBtn = document.getElementById('skip-submit-btn');
+
+if (submitScoreBtn) {
+    submitScoreBtn.addEventListener('click', async () => {
+        const nameInput = document.getElementById('player-name-input');
+        const name = nameInput.value.trim() || '名無しの冒険者';
+        const cp = getCombatPower();
+        
+        submitScoreBtn.disabled = true;
+        submitScoreBtn.textContent = '送信中...';
+        
+        try {
+            const res = await fetch('/api/ranking', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, score: cp })
+            });
+            if (res.ok) {
+                alert('オンラインランキングに登録しました！');
+            } else {
+                throw new Error('API Error');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('スコアの送信に失敗しました。(Vercel KV連携未完了等)');
+        }
+        
+        finalizeReset();
+    });
+}
+
+if (skipSubmitBtn) {
+    skipSubmitBtn.addEventListener('click', finalizeReset);
 }
 
 // ランキング表示処理
 const rankingBtn = document.getElementById('ranking-btn');
 const closeRankingBtn = document.getElementById('close-ranking-btn');
+const tabLocal = document.getElementById('tab-local');
+const tabOnline = document.getElementById('tab-online');
+
+let currentRankingTab = 'local';
+
+async function renderRanking() {
+    const list = document.getElementById('ranking-list');
+    list.innerHTML = '<li style="color:#aaa; text-align:center;">読み込み中...</li>';
+
+    if (currentRankingTab === 'local') {
+        loadRanking();
+        list.innerHTML = '';
+        if (!localRanking || localRanking.length === 0) {
+            list.innerHTML = '<li style="color:#888; text-align:center;">記録なし</li>';
+        } else {
+            for (let i = 0; i < Math.min(3, localRanking.length); i++) {
+                const score = localRanking[i] || 0;
+                const li = document.createElement('li');
+                li.textContent = `${i+1}位: 戦闘力 ${score}`;
+                list.appendChild(li);
+            }
+        }
+    } else {
+        // オンライン
+        try {
+            const res = await fetch('/api/ranking');
+            if (!res.ok) throw new Error('API Error');
+            const data = await res.json();
+            
+            list.innerHTML = '';
+            if (!data || data.length === 0) {
+                list.innerHTML = '<li style="color:#888; text-align:center;">まだ記録がありません</li>';
+            } else {
+                for (let i = 0; i < data.length; i++) {
+                    const li = document.createElement('li');
+                    li.textContent = `${i+1}位: ${data[i].name} (${data[i].score})`;
+                    list.appendChild(li);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            list.innerHTML = '<li style="color:#ff5252; font-size:0.9rem; text-align:center;">通信エラー<br><span style="font-size:0.75rem;">(Vercel KVの連携が必要です)</span></li>';
+        }
+    }
+}
 
 if (rankingBtn) {
     rankingBtn.addEventListener('click', () => {
-        loadRanking();
-        const list = document.getElementById('ranking-list');
-        list.innerHTML = '';
-        for (let i = 0; i < 3; i++) {
-            const score = localRanking[i] || 0;
-            const li = document.createElement('li');
-            li.textContent = `${i+1}位: 戦闘力 ${score}`;
-            list.appendChild(li);
-        }
         document.getElementById('ranking-overlay').classList.remove('hidden');
+        renderRanking();
     });
 }
+
 if (closeRankingBtn) {
     closeRankingBtn.addEventListener('click', () => {
         document.getElementById('ranking-overlay').classList.add('hidden');
+    });
+}
+
+if (tabLocal && tabOnline) {
+    tabLocal.addEventListener('click', () => {
+        currentRankingTab = 'local';
+        tabLocal.classList.add('active-tab');
+        tabOnline.classList.remove('active-tab');
+        renderRanking();
+    });
+    tabOnline.addEventListener('click', () => {
+        currentRankingTab = 'online';
+        tabOnline.classList.add('active-tab');
+        tabLocal.classList.remove('active-tab');
+        renderRanking();
     });
 }
 

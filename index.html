@@ -54,12 +54,30 @@
             </div>
         </div>
 
+        <!-- スコア送信オーバーレイ -->
+        <div id="submit-score-overlay" class="hidden">
+            <div id="submit-score-content">
+                <h2>🏆 オンライン登録</h2>
+                <p style="margin-bottom:15px; font-size:0.9rem;">記録更新！ランキングに名前を登録しましょう。</p>
+                <div style="font-size:1.5rem; color:#ffb300; margin-bottom:15px;">戦闘力: <span id="submit-score-val">0</span></div>
+                <input type="text" id="player-name-input" placeholder="プレイヤー名 (10文字以内)" maxlength="10" style="width:100%; padding:10px; margin-bottom:15px; border-radius:5px; border:none; text-align:center; font-size:1.1rem; background:#333; color:white;">
+                <button id="submit-score-btn" class="btn primary">送信してリセット</button>
+                <button id="skip-submit-btn" class="btn secondary">送信せずにリセット</button>
+            </div>
+        </div>
+
         <!-- ランキングオーバーレイ -->
         <div id="ranking-overlay" class="hidden">
             <div id="ranking-content">
                 <h2>🏆 殿堂入りランキング</h2>
-                <div style="color:#aaa; font-size:0.8rem;">※戦闘力 = ATK + DEF + (CRIT×10)</div>
-                <ul id="ranking-list" style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:1.2rem; color:#fff;">
+                <div style="color:#aaa; font-size:0.8rem; margin-bottom:10px;">※戦闘力 = ATK + DEF + (CRIT×10)</div>
+                
+                <div class="ranking-tabs" style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
+                    <button id="tab-local" class="btn text-only active-tab" style="flex:1;">ローカル</button>
+                    <button id="tab-online" class="btn text-only" style="flex:1;">オンライン</button>
+                </div>
+                
+                <ul id="ranking-list" style="list-style:none; padding:0; margin:10px 0 20px 0; text-align:left; font-size:1.1rem; color:#fff; max-height:200px; overflow-y:auto;">
                     <li>1位: 0</li>
                     <li>2位: 0</li>
                     <li>3位: 0</li>
@@ -97,6 +115,7 @@
                     <span id="drop-rarity" class="rarity-n">N</span>
                     <img id="drop-img" src="" alt="item" style="display:none; width:80px; height:80px; margin:10px 0; border-radius:10px; object-fit:cover;">
                     <span id="drop-name">木の剣</span>
+                    <div id="drop-quality" class="quality-badge" style="display:none;">Rank B</div>
                 </div>
             <!-- 追加：SSR・SR用シェアボタン -->
             <button id="share-x-btn" class="btn x-btn hidden">𝕏 ポストして自慢する</button>
