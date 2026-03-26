@@ -815,7 +815,7 @@ if (adBtn) {
             return;
         }
         
-        if (confirm('スポンサーのページ（広告）を別タブで開きます。\nサイトを数秒見た後、このゲームの画面に戻ってくるとスタミナが全回復します！')) {
+        if (confirm('スポンサー提供の外部サイトを表示します。（※スタミナ回復用）\nサイトを3秒以上見た後、この画面に戻るとスタミナが全回復します！')) {
             const openTime = Date.now();
             window.open(MONETAG_DIRECT_LINK, '_blank');
             
@@ -1927,3 +1927,58 @@ window.evolveItems = async function(sourceRarity) {
  * 初期化時のバフ更新タイマー
  */
 setInterval(updateBuffUI, 1000);
+
+// --- 法務モーダル（AdSense審査用）の制御 ---
+const LEGAL_TEXTS = {
+    privacy: {
+        title: 'プライバシーポリシー',
+        body: `
+            <h3>1. 広告の配信について</h3>
+            <p>当サイトでは、第三者配信の広告サービス「Google アドセンス」を利用しています。広告配信事業者は、ユーザーの興味に応じた商品やサービスの広告を表示するため、当サイトや他サイトへのアクセスに関する情報 「Cookie」(氏名、住所、メール アドレス、電話番号は含まれません) を使用することがあります。</p>
+            <p>Googleアドセンスに関して、このプロセスの詳細やこのような情報が広告配信事業者に使用されないようにする方法については、<a href="https://policies.google.com/technologies/ads?hl=ja" target="_blank">Googleのポリシーと規約</a>をご覧ください。</p>
+            
+            <h3>2. アクセス解析ツールについて</h3>
+            <p>当サイトでは、アクセス解析のためにCookieを使用しています。このデータは匿名で収集されており、個人を特定するものではありません。ブラウザの設定でCookieを無効にすることで収集を拒否することが出来ます。</p>
+
+            <h3>3. 免責事項</h3>
+            <p>当サイトのコンテンツ・情報について、可能な限り正確な情報を掲載するよう努めておりますが、正確性や安全性を保証するものではありません。当サイトに掲載された内容によって生じた損害等の一切の責任を負いかねますのでご了承ください。</p>
+        `
+    },
+    tos: {
+        title: '免責事項・利用規約',
+        body: `
+            <h3>著作権について</h3>
+            <p>当サイトで掲載している文章や画像などにつきましては、無断転載することを禁止します。当サイトは著作権や肖像権の侵害を目的としたものではありません。著作権や肖像権に関して問題がございましたら、お問い合わせフォームよりご連絡ください。迅速に対応いたします。</p>
+            
+            <h3>リンクについて</h3>
+            <p>当サイトは基本的にリンクフリーです。リンクを行う場合の許可や連絡は不要です。ただし、インラインフレームの使用や画像の直リンクはご遠慮ください。</p>
+        `
+    },
+    contact: {
+        title: 'お問い合わせ',
+        body: `
+            <p>当サイトに関するお問い合わせ、ご意見、ご要望は以下の連絡先までお願いいたします。</p>
+            <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:10px; margin-top:20px;">
+                運営者：<strong>Aida</strong><br>
+                連絡先：<strong>pinokio7pinoko@yahoo.co.jp</strong>
+            </div>
+            <p style="margin-top:20px; font-size:0.8rem; color:#888;">※返信にはお時間をいただく場合がございます。あらかじめご了承ください。</p>
+        `
+    }
+};
+
+window.showLegal = function(type) {
+    const data = LEGAL_TEXTS[type];
+    if (!data) return;
+    
+    document.getElementById('legal-title').textContent = data.title;
+    document.getElementById('legal-body').innerHTML = data.body;
+    document.getElementById('legal-overlay').classList.add('active');
+};
+
+const closeLegalBtn = document.getElementById('close-legal-btn');
+if (closeLegalBtn) {
+    closeLegalBtn.addEventListener('click', () => {
+        document.getElementById('legal-overlay').classList.remove('active');
+    });
+}

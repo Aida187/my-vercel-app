@@ -205,6 +205,66 @@
             </div>
             <div id="app-version" style="text-align:right; font-size:0.75rem; color:#666; margin-top:10px;">v0.3a</div>
         </footer>
+    <div id="article-section">
+        <section class="info-card">
+            <h2>⚔️ 30秒ダンジョン：攻略ガイド＆世界観</h2>
+            <div class="lore-text">
+                <p>遥か古、世界は無数の「装備」によって秩序が保たれていた。しかし、突如として現れた「禁断の魔王」により、聖なる武具はすべて砕かれ、ダンジョンの中に封印されてしまった。プレイヤーは「幸運の召喚士」となり、わずか30秒間だけ開く異世界の門を潜り、最強の装備を再構成しなければならない。</p>
+            </div>
+            
+            <div class="guide-grid">
+                <div class="guide-item">
+                    <h3>💎 効率的なマナの稼ぎ方</h3>
+                    <p>不要になった装備は「バッグ/分解」から分解しましょう。特にSR以上の装備は大量のマナに変換されます。獲得したマナは「合成進化」や「供物」に使用することで、さらなる高みを目指せます。</p>
+                </div>
+                <div class="guide-item">
+                    <h3>🙏 供物とドロップ率の秘密</h3>
+                    <p>ドロップ率が渋いと感じたら「供物」タブから祈願を行いましょう。マナを捧げることで30分間、SSRの出現率を大幅に底上げできます。コンボボーナス（3連続プレイ）と組み合わせるのが最強の攻略法です。</p>
+                </div>
+                <div class="guide-item">
+                    <h3>💀 禁断ダンジョンのリスクとリターン</h3>
+                    <p>1日1回限定の禁断ダンジョンは、勝利すれば最高品質のSSRやUR（超絶レア）が手に入ります。ただし敗北すると装備ロストの可能性があるため、十分な戦闘力を確保してから挑みましょう。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="info-card stats-guide">
+            <h2>📊 装備レアリティとドロップ率</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>レアリティ</th>
+                        <th>排出率</th>
+                        <th>分解マナ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>N (Normal)</td><td>65%</td><td>1</td></tr>
+                    <tr><td>R (Rare)</td><td>25%</td><td>5</td></tr>
+                    <tr><td>SR (Super Rare)</td><td>8%</td><td>50</td></tr>
+                    <tr><td>SSR (Double Super Rare)</td><td>2%</td><td>500</td></tr>
+                </tbody>
+            </table>
+            <p class="note">※供物バフや環境イベントにより、SSR率は最大7%以上まで上昇可能です。</p>
+        </section>
+    </div>
+
+    <footer id="site-footer">
+        <div class="footer-links">
+            <a href="javascript:void(0)" onclick="showLegal('privacy')">プライバシーポリシー</a>
+            <a href="javascript:void(0)" onclick="showLegal('tos')">免責事項</a>
+            <a href="javascript:void(0)" onclick="showLegal('contact')">お問い合わせ</a>
+        </div>
+        <p class="copyright">&copy; 2026 Admin: Aida. All rights reserved.</p>
+    </footer>
+
+    <!-- 法務用モーダル -->
+    <div id="legal-overlay" class="overlay">
+        <div id="legal-content">
+            <h2 id="legal-title">タイトル</h2>
+            <div id="legal-body">本文</div>
+            <button id="close-legal-btn" class="btn secondary">閉じる</button>
+        </div>
     </div>
 
     <!-- 演出用レイヤー -->
