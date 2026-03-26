@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>30秒ダンジョン：無限装備ガチャ</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="images/hero.png">
     <!-- Google AdSense Verification -->
@@ -45,8 +48,12 @@
                 <p>準備完了。ダンジョンに潜ってください。</p>
             </div>
 
-            <!-- ログインボーナスオーバーレイ -->
-        <div id="login-bonus-overlay" class="hidden">
+            <!-- 各種オーバーレイは game-container 直下に移動 -->
+
+        </main>
+
+        <!-- オーバーレイ群 -->
+        <div id="login-bonus-overlay">
             <div id="login-bonus-content">
                 <h2>🎁 ログインボーナス！</h2>
                 <p>本日のログインありがとうございます！<br>スタミナが満タンになりました！</p>
@@ -57,18 +64,14 @@
             </div>
         </div>
 
-        <!-- ランキングオーバーレイ -->
-        <div id="ranking-overlay" class="hidden">
+        <div id="ranking-overlay">
             <div id="ranking-content">
                 <h2>🏆 殿堂入りランキング</h2>
                 <div style="color:#aaa; font-size:0.8rem; margin-bottom:10px;">※戦闘力 = ATK + DEF + (CRIT×10)</div>
-                
                 <div class="ranking-tabs" style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
                     <button id="tab-local" class="btn text-only active-tab" style="flex:1;">ローカル</button>
                     <button id="tab-online" class="btn text-only" style="flex:1;">オンライン</button>
                 </div>
-                
-                <!-- オンライン用スコア送信エリア（JSで表示切替） -->
                 <div id="online-submit-area" class="hidden" style="background:#333; padding:10px; border-radius:8px; margin-bottom:15px; text-align:center;">
                     <div style="font-size:0.9rem; color:#ffd54f; margin-bottom:8px;">現在の戦闘力: <span id="current-score-val">0</span></div>
                     <div style="display:flex; gap:5px;">
@@ -76,7 +79,6 @@
                         <button id="submit-score-btn" class="btn primary" style="width:auto; padding:8px 15px; margin-top:0; font-size:0.9rem;">送信</button>
                     </div>
                 </div>
-                
                 <ul id="ranking-list" style="list-style:none; padding:0; margin:10px 0 20px 0; text-align:left; font-size:1.1rem; color:#fff; max-height:200px; overflow-y:auto;">
                     <li>1位: 0</li>
                     <li>2位: 0</li>
@@ -86,37 +88,108 @@
             </div>
         </div>
 
-        <!-- ミッションオーバーレイ -->
-        <div id="mission-overlay" class="hidden">
+        <div id="enchant-overlay">
+            <div id="enchant-content">
+                <h2 style="color:#ffb300;">✨ 新たなソウル・コアを発見！</h2>
+                <p>装備の性能(ATK/DEF)は自動で強化されましたが、<br>特殊効果を選択してください。</p>
+                <div style="display:flex; justify-content:space-around; gap:10px; margin:20px 0;">
+                    <div id="current-enchant-card" class="enchant-card">
+                        <div class="enchant-label">現在の効果</div>
+                        <div id="current-enchant-name" class="enchant-name">なし</div>
+                        <div id="current-enchant-desc" class="enchant-desc">-</div>
+                        <button id="keep-enchant-btn" class="btn secondary">これを維持</button>
+                    </div>
+                    <div style="align-self:center; font-size:1.5rem;">➡</div>
+                    <div id="new-enchant-card" class="enchant-card new-highlight">
+                        <div class="enchant-label">新発見の効果</div>
+                        <div id="new-enchant-name" class="enchant-name">連撃の魂</div>
+                        <div id="new-enchant-desc" class="enchant-desc">スタミナ1.5倍</div>
+                        <button id="swap-enchant-btn" class="btn primary">これに変更！</button>
+                    </div>
+                </div>
+                <p style="font-size:0.8rem; color:#888;">※選ばなかった方の効果は失われます</p>
+            </div>
+        </div>
+
+        <div id="mission-overlay">
             <div id="mission-content">
                 <h2>📋 デイリーミッション</h2>
-                <ul id="mission-list" style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:1rem; color:#fff;">
-                    <!-- JSで動的生成 -->
-                </ul>
+                <ul id="mission-list" style="list-style:none; padding:0; margin:20px 0; text-align:left; font-size:1rem; color:#fff;"></ul>
                 <button id="close-mission-btn" class="btn secondary">閉じる</button>
             </div>
         </div>
 
-        <!-- 結果オーバーレイ -->
-        <div id="result-overlay" class="hidden">
+        <div id="result-overlay">
             <h2>ダンジョン踏破！</h2>
-                <div id="drop-item">
-                    <span id="drop-rarity" class="rarity-n">N</span>
-                    <img id="drop-img" src="" alt="item" style="display:none; width:80px; height:80px; margin:10px 0; border-radius:10px; object-fit:cover;">
-                    <span id="drop-name">木の剣</span>
-                    <div id="drop-quality" class="quality-badge" style="display:none;">Rank B</div>
-                </div>
-            <!-- 追加：SSR・SR用シェアボタン -->
+            <div id="drop-item">
+                <span id="drop-rarity" class="rarity-n">N</span>
+                <img id="drop-img" src="" alt="item" style="display:none; width:80px; height:80px; margin:10px 0; border-radius:10px; object-fit:cover;">
+                <span id="drop-name">木の剣</span>
+                <div id="drop-quality" class="quality-badge" style="display:none;">Rank B</div>
+            </div>
             <button id="share-x-btn" class="btn x-btn hidden">𝕏 ポストして自慢する</button>
             <button id="close-result-btn" class="btn secondary">戻る</button>
+        </div>
+
+        <!-- 追加：バッグ/分解オーバーレイ -->
+        <div id="inventory-overlay">
+            <div id="inventory-content">
+                <h2 style="margin-bottom:10px;">🎒 インベントリ</h2>
+                
+                <div class="inventory-tabs" style="display:flex; justify-content:center; gap:5px; margin-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <button id="tab-bag" class="btn text-only active-tab" style="flex:1; padding:10px; font-size:0.85rem;">バッグ/分解</button>
+                    <button id="tab-evolve" class="btn text-only" style="flex:1; padding:10px; font-size:0.85rem;">合成進化</button>
+                    <button id="tab-offering" class="btn text-only" style="flex:1; padding:10px; font-size:0.85rem;">供物</button>
+                </div>
+
+                <!-- バッグ・分解タブ -->
+                <div id="inventory-bag-pane">
+                    <div id="material-display" style="background:rgba(255,179,0,0.1); padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid rgba(255,179,0,0.3);">
+                        <span style="color:#ffb300; font-weight:bold;">マナの欠片: <span id="material-count">0</span></span>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <button id="dismantle-bulk-btn" class="btn danger" style="flex:1; font-size:0.9rem; padding:10px;">N・Rを一括分解</button>
+                    </div>
+
+                    <div id="inventory-list-container" style="max-height:300px; overflow-y:auto; margin-bottom:20px;">
+                        <ul id="inventory-list" style="list-style:none; padding:0; margin:0;">
+                            <!-- JSで動的に生成 -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 合成進化タブ -->
+                <div id="inventory-evolve-pane" class="hidden">
+                    <p style="font-size:0.85rem; color:#aaa; margin-bottom:15px;">同レアリティの非装備品を5個消費して、<br>1つ上のレアリティの装備を生成します。</p>
+                    <div id="evolution-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                        <!-- JSで動的に生成 -->
+                    </div>
+                </div>
+
+                <!-- 供物タブ -->
+                <div id="inventory-offering-pane" class="hidden">
+                    <p style="font-size:0.85rem; color:#aaa; margin-bottom:10px;">装備を1つ「供物」として捧げることで、<br>一定回数の間、ドロップ率を大幅に強化します。</p>
+                    <div id="offering-active-status" style="background:rgba(225,29,72,0.1); padding:10px; border-radius:8px; margin-bottom:15px; border:1px solid rgba(225,29,72,0.3); text-align:center;">
+                        <span id="offering-status-text" style="color:#e11d48; font-size:0.9rem; font-weight:bold;">現在、供物バフは発生していません</span>
+                    </div>
+                    <div id="offering-list-container" style="max-height:250px; overflow-y:auto; margin-bottom:20px;">
+                        <ul id="offering-list" style="list-style:none; padding:0; margin:0;">
+                            <!-- JSで動的に生成 -->
+                        </ul>
+                    </div>
+                </div>
+                
+                <button id="close-inventory-btn" class="btn secondary">閉じる</button>
             </div>
-        </main>
+        </div>
 
         <!-- 下：アクションボタン -->
         <footer id="action-bar">
             <!-- 追加：環境バフ表示 -->
-            <div id="daily-buff-display" style="text-align:center; font-size:0.85rem; margin-bottom:5px; font-weight:bold;">
+            <div id="daily-buff-display" style="text-align:center; font-size:0.85rem; margin-bottom:5px; font-weight:bold; display:flex; flex-direction:column; gap:2px;">
                 <span id="buff-text">🌟 本日の環境: 通常</span>
+                <span id="offering-buff-text" style="color:#e11d48; text-shadow:0 0 8px rgba(225,29,72,0.5); font-size:0.8rem; display:none;">🙏 供物の祈り: SSR率UP (残り 5回)</span>
             </div>
             <!-- 追加：コンボ表示UI -->
             <div id="combo-display">
@@ -125,13 +198,19 @@
             <button id="dive-btn" class="btn primary">⚔️ 潜る (スタミナ-1)</button>
             <button id="forbidden-dive-btn" class="btn danger" style="margin-top:5px; font-size:1.1rem;">💀 禁断ダンジョンに挑む (1日1回)</button>
             <div style="display:flex; justify-content:space-between; margin-top:5px; flex-wrap:wrap; gap:5px;">
+                <button id="inventory-btn" class="btn text-only" style="flex:1;">🎒 バッグ/分解</button>
                 <button id="mission-btn" class="btn text-only" style="flex:1;">📋 ミッション</button>
                 <button id="ranking-btn" class="btn text-only" style="flex:1;">🏆 ランキング</button>
                 <button id="reset-btn" class="btn text-only" style="flex:1;">🔄 リセット</button>
             </div>
-            <div id="app-version" style="text-align:right; font-size:0.75rem; color:#666; margin-top:10px;">v0.2b</div>
+            <div id="app-version" style="text-align:right; font-size:0.75rem; color:#666; margin-top:10px;">v0.3a</div>
         </footer>
     </div>
-    <script src="main.js"></script>
+
+    <!-- 演出用レイヤー -->
+    <div id="evolution-flash-overlay"></div>
+    <div id="evolution-result-popup"></div>
+
+    <script src="main_v2.js"></script>
 </body>
 </html>

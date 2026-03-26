@@ -34,9 +34,12 @@ const comboDisplay = document.getElementById('combo-display');
 // 定数
 const BASE_STATS = { atk: 10, def: 10, crit: 5 };
 const MAX_STAMINA = 10;
-const STAMINA_RECOVERY_MS = 10000; // テスト用に10秒で1回復
+const STAMINA_RECOVERY_MS = 300000; // 5分で1回復
 const SAVE_KEY = 'hacsura_save_data';
 const DAILY_DATE_KEY = 'hacsura_daily_date'; // 追加: ミッションリセット用のキー
+const EVO_COST = 5; // 追加: 合成に必要な数
+const EVO_LEVEL_INHERIT_RATE = 0.3; // 追加: レベル引き継ぎ率
+const EVO_MANA_COSTS = { 'N': 20, 'R': 100, 'SR': 600 }; // 追加: 合成に必要なマナ
 
 // --- 追加: エンチャント定義 ---
 const ENCHANTMENTS = [
@@ -61,6 +64,7 @@ let equipped = { weapon: null, armor: null, accessory: null };
 let equippedEnchants = { weapon: null, armor: null, accessory: null };
 // 各種フラグ・状態
 let stamina = MAX_STAMINA;
+let materials = 0; // 追加
 let lastStaminaUpdate = Date.now();
 let isBattling = false;
 adTimerInterval = null; // adTimerIntervalはグローバルで宣言済みのため再代入のみ
@@ -71,6 +75,7 @@ const RANKING_KEY = 'hacsura_local_ranking';
 let localRanking = [];
 let dailyMissions = { date: '', playCount: 0, synthCount: 0, claimed: [false, false] };
 let dailyBuff = null;
+let offeringBuff = null; // 供物バフ { rarity, power, expiresAt }
 let forbiddenLastPlayed = localStorage.getItem('hacsura_forbidden_date') || ''; // 禁断ダンジョン最終プレイ日
 
 // デイリーバフの抽選
@@ -89,19 +94,34 @@ function generateDailyBuff() {
     else dailyBuff = buffs[3];
 }
 
-// デイリーバフのUI更新
+// バフのUI更新
 function updateBuffUI() {
     const bt = document.getElementById('buff-text');
-    if (!bt || !dailyBuff) return;
-    
-    if (dailyBuff.type === 'NONE') {
-        bt.style.color = '#888';
-        bt.style.textShadow = 'none';
-    } else {
-        bt.style.color = '#ffeb3b';
-        bt.style.textShadow = '0 0 8px #ffeb3b';
+    if (bt && dailyBuff) {
+        if (dailyBuff.type === 'NONE') {
+            bt.style.color = '#888';
+            bt.style.textShadow = 'none';
+        } else {
+            bt.style.color = '#ffeb3b';
+            bt.style.textShadow = '0 0 8px #ffeb3b';
+        }
+        bt.textContent = `🌟 本日の環境: ${dailyBuff.name}`;
     }
-    bt.textContent = `🌟 本日の環境: ${dailyBuff.name}`;
+
+    const obt = document.getElementById('offering-buff-text');
+    if (obt) {
+        const now = Date.now();
+        if (offeringBuff && offeringBuff.expiresAt > now) {
+            obt.style.display = 'inline-block';
+            const powerPct = (offeringBuff.power * 100).toFixed(0);
+            const remainSec = Math.floor((offeringBuff.expiresAt - now) / 1000);
+            const m = Math.floor(remainSec / 60);
+            const s = remainSec % 60;
+            obt.textContent = `🙏 供物の祈り: SSR率+${powerPct}% (残り ${m}:${s.toString().padStart(2,'0')})`;
+        } else {
+            obt.style.display = 'none';
+        }
+    }
 }
 
 // 日次ミッションのリセットチェック
@@ -196,8 +216,10 @@ function saveData() {
         consecutiveLoginDays,
         dailyMissions,
         dailyBuff,
+        offeringBuff,
         forbiddenLastPlayed,
-        equippedEnchants // 追加
+        equippedEnchants, // 追加
+        materials // 追加
     }));
 }
 
@@ -216,8 +238,10 @@ function loadData() {
             consecutiveLoginDays = data.consecutiveLoginDays || 0;
             dailyMissions = data.dailyMissions || { date: '', playCount: 0, synthCount: 0, claimed: [false, false] };
             dailyBuff = data.dailyBuff || null;
+            offeringBuff = data.offeringBuff || null;
             forbiddenLastPlayed = data.forbiddenLastPlayed || '';
-            equippedEnchants = data.equippedEnchants || { weapon: null, armor: null, accessory: null }; // 追加
+            equippedEnchants = data.equippedEnchants || { weapon: null, armor: null, accessory: null }; 
+            materials = data.materials || 0; // 追加
         } catch (e) {
             console.error('Save data load error', e);
         }
@@ -282,18 +306,25 @@ function generateDrop(isBonus) {
         else if (rand < 70) rarity = 'SR';
         else rarity = 'R';
     } else {
-        // 通常時 (dailyBuffの影響を受ける)
-        let ssrChance = 2; // 2%
-        let srChance = 8;  // 8% (累積10%)
+        // 通常時 (dailyBuff と offeringBuff の影響を受ける)
+        let ssrChance = 2; // 基本2%
+        let srChance = 8;  // 基本8% (累積10%)
+        let rChance = 25; // 基本25% (累積35%)
         
         if (dailyBuff) {
             if (dailyBuff.type === 'SSR_UP') ssrChance *= 3;
             if (dailyBuff.type === 'SR_UP') srChance *= 3;
         }
 
+        // 供物バフ（加算）
+        const now = Date.now();
+        if (offeringBuff && offeringBuff.expiresAt > now) {
+            ssrChance += offeringBuff.power * 100;
+        }
+
         if (rand < ssrChance) rarity = 'SSR';
         else if (rand < ssrChance + srChance) rarity = 'SR';
-        else if (rand < 40) rarity = 'R';
+        else if (rand < ssrChance + srChance + rChance) rarity = 'R';
         else rarity = 'N';
     }
 
@@ -323,9 +354,10 @@ function generateDrop(isBonus) {
         name: baseItem.name,
         rarity: rarity,
         type: baseItem.type,
-        quality: 0.8 + Math.random() * 0.8,
-        atk: Math.round(baseItem.atk * (0.8 + Math.random() * 0.4)), // 個体差
-        def: Math.round(baseItem.def * (0.8 + Math.random() * 0.4)),
+        // 個体値（品質）の抽選 (0.5〜1.5: 幅を持たせて当たり外れを作る)
+        quality: 0.5 + Math.random() * 1.0,
+        atk: Math.round(baseItem.atk * (0.5 + Math.random() * 1.0)), // 個体差
+        def: Math.round(baseItem.def * (0.5 + Math.random() * 1.0)),
         enchant: enchant
     };
 }
@@ -975,8 +1007,8 @@ function startForbiddenDungeon() {
     setTimeout(() => {
         // 勝敗判定 (勝率30〜50%。プレイヤーの戦闘力に応じて変動)
         const cp = getCombatPower();
-        // ベース25%、戦闘力が高いほど最大50%に近づく（戦闘力5000で+25%）
-        let winRate = 0.25 + Math.min(0.25, (cp || 0) / 5000); 
+        // ベース35%、戦闘力に応じて最大45%まで上昇（目標40%前後の「勝てそうで怖い」バランス）
+        let winRate = 0.35 + Math.min(0.10, (cp || 0) / 10000); 
         const isWin = Math.random() < winRate;
 
         isBattling = false;
@@ -1046,6 +1078,7 @@ function processForbiddenDrop() {
     } else {
         // 新規取得
         inventory[droppedItem.id] = { 
+            baseId: droppedItem.id, // 基底ID保存 (互換性と分解用)
             level: 1, 
             atk: droppedItem.atk, 
             def: droppedItem.def, 
@@ -1412,3 +1445,485 @@ if (closeMissionBtn) {
         missionOverlay.classList.remove('active');
     });
 }
+
+// --- 分解システム関連 ---
+const inventoryOverlay = document.getElementById('inventory-overlay');
+const inventoryList = document.getElementById('inventory-list');
+const materialCountText = document.getElementById('material-count');
+const inventoryBtn = document.getElementById('inventory-btn');
+const closeInventoryBtn = document.getElementById('close-inventory-btn');
+const dismantleBulkBtn = document.getElementById('dismantle-bulk-btn');
+
+const MATERIAL_RATES = { 'N': 1, 'R': 5, 'SR': 50, 'SSR': 500, 'UR': 5000 };
+
+function updateMaterialUI() {
+    if (materialCountText) materialCountText.textContent = materials;
+}
+
+function renderInventory() {
+    if (!inventoryList) return;
+    inventoryList.innerHTML = '';
+    updateMaterialUI();
+
+    const equippedIds = Object.values(equipped);
+    const invKeys = Object.keys(inventory);
+
+    if (invKeys.length === 0) {
+        inventoryList.innerHTML = '<li style="color:#888; text-align:center; padding:20px;">バッグは空です</li>';
+        return;
+    }
+
+    // 装備中のアイテムを除外して表示
+    const availableItems = invKeys
+        .filter(id => !equippedIds.includes(id))
+        .map(id => ({ id, ...inventory[id] }))
+        .sort((a, b) => {
+            const rScore = { 'UR': 5, 'SSR': 4, 'SR': 3, 'R': 2, 'N': 1 };
+            const bIdA = a.baseId || a.id.split('_')[0];
+            const bIdB = b.baseId || b.id.split('_')[0];
+            const itemA = equipmentDB.find(e => e.id === bIdA) || { rarity: 'N' };
+            const itemB = equipmentDB.find(e => e.id === bIdB) || { rarity: 'N' };
+            return rScore[itemB.rarity] - rScore[itemA.rarity]; // レア度降順
+        });
+
+    if (availableItems.length === 0) {
+        inventoryList.innerHTML = '<li style="color:#888; text-align:center; padding:20px;">分解可能なアイテムはありません<br>(装備中を除く)</li>';
+        return;
+    }
+
+    availableItems.forEach(invItem => {
+        const bId = invItem.baseId || invItem.id.split('_')[0];
+        const base = equipmentDB.find(e => e.id === bId) || { name: '不明な装備', rarity: 'N', atk: 0, def: 0 };
+        const li = document.createElement('li');
+        li.className = 'inventory-item';
+        
+        const qRank = getQualityRank(invItem.quality || 1.0);
+        const gain = MATERIAL_RATES[base.rarity] || 0;
+        const dispAtk = invItem.atk !== undefined ? invItem.atk : (base.atk || 0);
+        const dispDef = invItem.def !== undefined ? invItem.def : (base.def || 0);
+
+        li.innerHTML = `
+            <div class="inventory-item-info">
+                <span class="inventory-item-name rarity-${base.rarity.toLowerCase()}">${base.name} Lv${invItem.level || 1} [${qRank.rank}]</span>
+                <span class="inventory-item-detail">ATK:${dispAtk} DEF:${dispDef} (分解時: +${gain})</span>
+            </div>
+            <button class="btn dismantle-btn" onclick="dismantleItem('${invItem.id}')">分解</button>
+        `;
+        inventoryList.appendChild(li);
+    });
+}
+
+window.dismantleItem = function(id) {
+    const invItem = inventory[id];
+    if (!invItem) return;
+    
+    const bId = invItem.baseId || id.split('_')[0];
+    const base = equipmentDB.find(e => e.id === bId);
+    const rarity = base ? base.rarity : 'N';
+    const name = base ? base.name : '不明な装備';
+
+    if (confirm(`「${name}」を分解して、マナの欠片 ${MATERIAL_RATES[rarity]}個 に変換しますか？`)) {
+        materials += MATERIAL_RATES[rarity];
+        delete inventory[id];
+        saveData();
+        renderInventory();
+        addLog(`🔧 ${name}を分解しました。`);
+    }
+};
+
+function dismantleBulk() {
+    const equippedIds = Object.values(equipped);
+    const targetIds = Object.keys(inventory).filter(id => {
+        if (equippedIds.includes(id)) return false;
+        const invItem = inventory[id];
+        const bId = invItem.baseId || id.split('_')[0];
+        const base = equipmentDB.find(e => e.id === bId);
+        return base && (base.rarity === 'N' || base.rarity === 'R');
+    });
+
+    if (targetIds.length === 0) {
+        alert('分解可能な N または R 装備がありません。');
+        return;
+    }
+
+    if (confirm(`非装備中の N と R 装備 (${targetIds.length}個) を一括分解しますか？`)) {
+        let totalGain = 0;
+        targetIds.forEach(id => {
+            const invItem = inventory[id];
+            const bId = invItem.baseId || id.split('_')[0];
+            const base = equipmentDB.find(e => e.id === bId);
+            totalGain += MATERIAL_RATES[base.rarity] || 0;
+            delete inventory[id];
+        });
+        materials += totalGain;
+        saveData();
+        renderInventory();
+        alert(`一括分解完了！マナの欠片 ${totalGain}個 を獲得しました。`);
+        addLog(`🔧 装備${targetIds.length}個を一括分解しました。`);
+    }
+}
+
+if (inventoryBtn) {
+    inventoryBtn.addEventListener('click', () => {
+        switchInventoryTab('bag'); // デフォルトでバッグタブを開く
+        inventoryOverlay.classList.add('active');
+    });
+}
+
+if (closeInventoryBtn) {
+    closeInventoryBtn.addEventListener('click', () => {
+        inventoryOverlay.classList.remove('active');
+    });
+}
+
+if (dismantleBulkBtn) {
+    dismantleBulkBtn.addEventListener('click', dismantleBulk);
+}
+
+// --- 合成進化システム関連 (STEP 1 & 2: 統合ロジックとUI) ---
+const tabBag = document.getElementById('tab-bag');
+const tabEvolve = document.getElementById('tab-evolve');
+const tabOffering = document.getElementById('tab-offering');
+const bagPane = document.getElementById('inventory-bag-pane');
+const evolvePane = document.getElementById('inventory-evolve-pane');
+const offeringPane = document.getElementById('inventory-offering-pane');
+const evolutionList = document.getElementById('evolution-list');
+const offeringList = document.getElementById('offering-list');
+
+/**
+ * インベントリのタブを切り替える
+ */
+function switchInventoryTab(tab) {
+    [tabBag, tabEvolve, tabOffering].forEach(t => t.classList.remove('active-tab'));
+    [bagPane, evolvePane, offeringPane].forEach(p => p.classList.add('hidden'));
+
+    if (tab === 'bag') {
+        tabBag.classList.add('active-tab');
+        bagPane.classList.remove('hidden');
+        renderInventory();
+    } else if (tab === 'evolve') {
+        tabEvolve.classList.add('active-tab');
+        evolvePane.classList.remove('hidden');
+        renderEvolution();
+    } else if (tab === 'offering') {
+        tabOffering.classList.add('active-tab');
+        offeringPane.classList.remove('hidden');
+        renderOffering();
+    }
+}
+
+if (tabBag) tabBag.addEventListener('click', () => switchInventoryTab('bag'));
+if (tabEvolve) tabEvolve.addEventListener('click', () => switchInventoryTab('evolve'));
+if (tabOffering) tabOffering.addEventListener('click', () => switchInventoryTab('offering'));
+
+/**
+ * 供物画面の描画
+ */
+function renderOffering() {
+    if (!offeringList) return;
+    offeringList.innerHTML = '';
+
+    // 現在のバフ状態表示
+    const statusText = document.getElementById('offering-status-text');
+    if (statusText) {
+        const now = Date.now();
+        if (offeringBuff && offeringBuff.expiresAt > now) {
+            const p = (offeringBuff.power * 100).toFixed(0);
+            const remainMin = Math.ceil((offeringBuff.expiresAt - now) / 60000);
+            statusText.textContent = `発動中：SSR率+${p}% (残り約${remainMin}分)`;
+        } else {
+            statusText.textContent = `現在、供物バフは発生していません`;
+        }
+    }
+
+    // 祈願ボタンリストの作成 (マナ消費型への転換)
+    const offerings = [
+        { name: '初級祈願', cost: 100, power: 0.01, desc: 'SSR率 +1%' },
+        { name: '上級祈願', cost: 500, power: 0.03, desc: 'SSR率 +3%' },
+        { name: '禁断祈願', cost: 2000, power: 0.05, desc: 'SSR率 +5%' }
+    ];
+
+    offerings.forEach(off => {
+        const isManaReady = materials >= off.cost;
+        const li = document.createElement('li');
+        li.className = 'inventory-item';
+        li.style.padding = '15px';
+        li.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        
+        li.innerHTML = `
+            <div class="inventory-item-info">
+                <span class="inventory-item-name" style="color:#ffb300;">${off.name}</span>
+                <div class="inventory-item-detail" style="color:#fff;">${off.desc} / 30分間</div>
+                <div style="font-size:0.7rem; color:${isManaReady ? '#4caf50' : '#ff5252'};">コスト: ${off.cost} マナ</div>
+            </div>
+            <button class="btn offering-btn" ${!isManaReady ? 'disabled' : ''} onclick="pray('${off.cost}', ${off.power})">祈る</button>
+        `;
+        offeringList.appendChild(li);
+    });
+}
+
+/**
+ * 祈願（供物システム）の実行
+ */
+window.pray = function(cost, power) {
+    if (materials < cost) return;
+
+    if (!confirm(`${cost} マナを消費して祈りを捧げますか？\n(30分間SSR率がアップします)`)) return;
+
+    materials -= parseInt(cost);
+    const expireTime = Date.now() + (30 * 60 * 1000); // 30分
+    
+    offeringBuff = { 
+        rarity: 'MANA',
+        power: power,
+        expiresAt: expireTime
+    };
+
+    saveData();
+    renderOffering();
+    updateBuffUI();
+    updateMaterialUI();
+    
+    addLog(`🙏 祈りが通じた！30分間、幸運が舞い降りる...！！`);
+    
+    // 軽い振動演出
+    gameContainer.classList.add('shake');
+    setTimeout(() => gameContainer.classList.remove('shake'), 500);
+}
+
+/**
+ * アイテムを供物として捧げる
+ */
+window.offerItem = function(id) {
+    const invItem = inventory[id];
+    if (!invItem) return;
+
+    const bId = invItem.baseId || id.split('_')[0];
+    const base = equipmentDB.find(e => e.id === bId);
+    if (!base) return;
+
+    if (!confirm(`「${base.name}」を供物として捧げますか？\n(このアイテムは消失します)`)) return;
+
+    // バフ設定: N:0.5%/5回, R:2%/10回, SR:10%/15回, SSR:30%/30回
+    const BUFF_CONFIG = {
+        'N':   { power: 0.005, remaining: 5 },
+        'R':   { power: 0.02,  remaining: 10 },
+        'SR':  { power: 0.10,  remaining: 15 },
+        'SSR': { power: 0.30,  remaining: 30 },
+        'UR':  { power: 0.80,  remaining: 100 } // 一応
+    };
+
+    const config = BUFF_CONFIG[base.rarity] || { power: 0, remaining: 0 };
+    offeringBuff = { 
+        rarity: base.rarity,
+        power: config.power,
+        remaining: config.remaining
+    };
+
+    delete inventory[id];
+    saveData();
+    renderOffering();
+    updateBuffUI();
+    
+    addLog(`🙏 「${base.name}」を捧げた。祈りが通じ、幸運が舞い降りた！`);
+    
+    // 軽い振動演出
+    gameContainer.classList.add('shake');
+    setTimeout(() => gameContainer.classList.remove('shake'), 500);
+}
+
+/**
+ * 進化画面の描画
+ */
+function renderEvolution() {
+    if (!evolutionList) return;
+    evolutionList.innerHTML = '';
+
+    const equippedIds = Object.values(equipped);
+    const counts = { 'N': 0, 'R': 0, 'SR': 0, 'SSR': 0 };
+
+    Object.keys(inventory).forEach(id => {
+        if (!equippedIds.includes(id)) {
+            const invItem = inventory[id];
+            const bId = invItem.baseId || id.split('_')[0];
+            const base = equipmentDB.find(e => e.id === bId);
+            if (base && counts[base.rarity] !== undefined) {
+                counts[base.rarity]++;
+            }
+        }
+    });
+
+    const evolutions = [
+        { from: 'N', to: 'R' },
+        { from: 'R', to: 'SR' },
+        { from: 'SR', to: 'SSR' }
+    ];
+
+    evolutions.forEach(evo => {
+        const count = counts[evo.from];
+        const isItemsReady = count >= EVO_COST;
+        const manaCost = EVO_MANA_COSTS[evo.from] || 0;
+        const isManaReady = materials >= manaCost;
+        const isReady = isItemsReady && isManaReady;
+        
+        const remaining = Math.max(0, EVO_COST - count);
+        
+        // マナ不足メッセージの生成
+        let manaHint = '';
+        if (isItemsReady && !isManaReady) {
+            const diff = manaCost - materials;
+            const dismantleN = Math.ceil(diff / 1); // N分解は1マナ想定
+            manaHint = `<div style="font-size:0.7rem; color:#ff5252; margin-top:4px;">あと ${diff} マナ不足 (N分解 ${dismantleN}回分)</div>`;
+        } else if (isItemsReady && isManaReady) {
+            manaHint = `<div style="font-size:0.7rem; color:#4caf50; margin-top:4px;">マナ条件クリア！</div>`;
+        }
+
+        const div = document.createElement('div');
+        div.className = `evolution-item ${isReady ? 'ready-to-evolve' : ''}`;
+        div.innerHTML = `
+            <div class="evo-rarity-info">
+                <div class="evo-rarity-name rarity-${evo.from.toLowerCase()}">${evo.from} ➡ ${evo.to}</div>
+                <div>
+                    <span class="evo-count-badge ${isItemsReady ? 'ready' : ''}">${count} / ${EVO_COST}</span>
+                    <span style="font-size:0.75rem; color:#aaa; margin-left:5px;">コスト: ${manaCost} マナ</span>
+                </div>
+                ${manaHint}
+            </div>
+            <button class="btn primary btn-evolve" ${!isReady ? 'disabled' : ''} onclick="evolveItems('${evo.from}')">
+                進化
+            </button>
+        `;
+        evolutionList.appendChild(div);
+    });
+}
+
+/**
+ * 特定のレアリティのアイテムを生成するヘルパー
+ */
+function createEvolvedItem(rarity, level) {
+    const pool = equipmentDB.filter(e => e.rarity === rarity);
+    if (pool.length === 0) return null;
+    
+    const baseItem = pool[Math.floor(Math.random() * pool.length)];
+    const quality = 0.8 + Math.random() * 0.8;
+    
+    // エンチャント抽選 (15%)
+    let enchant = null;
+    if (Math.random() < 0.15) {
+        enchant = ENCHANTMENTS[Math.floor(Math.random() * ENCHANTMENTS.length)];
+    }
+
+    const item = {
+        id: `${baseItem.id}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+        baseId: baseItem.id,
+        name: baseItem.name,
+        rarity: rarity,
+        type: baseItem.type,
+        // 進化アイテムの個体値 (0.8〜1.5: 努力の結晶なのでドロップより最低値が高い)
+        quality: 0.8 + Math.random() * 0.7,
+        atk: Math.round(baseItem.atk * (0.8 + Math.random() * 0.7)),
+        def: Math.round(baseItem.def * (0.8 + Math.random() * 0.7)),
+        enchant: enchant
+    };
+
+    return { item, level };
+}
+
+/**
+ * アイテムの進化を実行する
+ */
+window.evolveItems = async function(sourceRarity) {
+    if (sourceRarity === 'SSR') {
+        addLog('❌ SSRからURへの進化は行えません。');
+        return null;
+    }
+    
+    const equippedIds = Object.values(equipped);
+    const eligibleIds = Object.keys(inventory).filter(id => {
+        if (equippedIds.includes(id)) return false;
+        const invItem = inventory[id];
+        const bId = invItem.baseId || id.split('_')[0];
+        const base = equipmentDB.find(e => e.id === bId);
+        return base && base.rarity === sourceRarity;
+    });
+
+    if (eligibleIds.length < EVO_COST) {
+        addLog(`❌ 素材が足りません（あと ${EVO_COST - eligibleIds.length} 個必要）。`);
+        return null;
+    }
+
+    // 大成功判定 (4%)
+    const isGreatSuccess = Math.random() < 0.04;
+    
+    // 素材の確定
+    const materialIds = eligibleIds.slice(0, EVO_COST);
+    let totalLevel = 1; // 修正
+    materialIds.forEach(id => {
+        totalLevel += (inventory[id].level || 1);
+    });
+
+    // 平均レベルの30%
+    const avgLevel = totalLevel / EVO_COST;
+    const newLevel = Math.max(1, Math.floor(avgLevel * EVO_LEVEL_INHERIT_RATE));
+
+    // レアリティ決定
+    const rarityOrder = ['N', 'R', 'SR', 'SSR'];
+    let currentIndex = rarityOrder.indexOf(sourceRarity);
+    let nextIndex = currentIndex + (isGreatSuccess ? 2 : 1);
+    if (nextIndex >= rarityOrder.length) nextIndex = rarityOrder.length - 1; // SSR止まり
+    const nextRarity = rarityOrder[nextIndex];
+
+    // 演出：タメ (0.5s)
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // マナコストのチェック
+    const manaCost = EVO_MANA_COSTS[sourceRarity] || 0;
+    if (materials < manaCost) {
+        addLog(`❌ マナが足りません（あと ${manaCost - materials} 個必要）。`);
+        return null;
+    }
+
+    // 新アイテムの生成
+    const evolved = createEvolvedItem(nextRarity, newLevel);
+    if (!evolved) return null;
+
+    // コストの支払い
+    materials -= manaCost;
+    updateMaterialUI();
+
+    // 素材の削除
+    materialIds.forEach(id => delete inventory[id]);
+
+    // 追加
+    const newItem = evolved.item;
+    inventory[newItem.id] = {
+        baseId: newItem.baseId,
+        level: evolved.level,
+        atk: newItem.atk,
+        def: newItem.def,
+        quality: isGreatSuccess ? 1.6 : newItem.quality // 大成功時は品質も高め
+    };
+
+    saveData();
+    playEvolutionEffect(isGreatSuccess, { ...newItem, level: newLevel });
+    
+    updateStatsUI();
+    
+    // 現在のタブに合わせてUI更新
+    if (evolvePane && !evolvePane.classList.contains('hidden')) {
+        renderEvolution();
+    } else if (bagPane && !bagPane.classList.contains('hidden')) {
+        renderInventory();
+    }
+
+    const logColorClass = `rarity-${nextRarity.toLowerCase()}`;
+    const successMsg = isGreatSuccess ? '🔥 大成功！！レアリティ2段階上昇！！' : '✨ 進化成功！';
+    addLog(`<span class="${logColorClass}">${successMsg} 「${newItem.name} Lv${newLevel}」を獲得！</span>`);
+    
+    return { item: newItem, level: newLevel };
+};
+
+/**
+ * 初期化時のバフ更新タイマー
+ */
+setInterval(updateBuffUI, 1000);
