@@ -1,12 +1,4 @@
-// ----- Monetag Ad Network Integration -----
-self.options = {
-    "domain": "3nbf4.com",
-    "zoneId": 10783775
-}
-self.lary = ""
-importScripts('https://3nbf4.com/act/files/service-worker.min.js?r=sw')
-// ----------------------------------------
-
+// ----- Service Worker Cache Configuration -----
 const CACHE_NAME = 'hacsura-v6';
 const urlsToCache = [
   './index.html',

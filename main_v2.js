@@ -34,7 +34,7 @@ const comboDisplay = document.getElementById('combo-display');
 // 定数
 const BASE_STATS = { atk: 10, def: 10, crit: 5 };
 const MAX_STAMINA = 10;
-const STAMINA_RECOVERY_MS = 300000; // 5分で1回復
+const STAMINA_RECOVERY_MS = 15000; // 審査期間中の暫定：15秒で1回復（通常5分）
 const SAVE_KEY = 'hacsura_save_data';
 const DAILY_DATE_KEY = 'hacsura_daily_date'; // 追加: ミッションリセット用のキー
 const EVO_COST = 5; // 追加: 合成に必要な数
@@ -805,48 +805,8 @@ async function startDungeon() {
     showResult(item, result);
 }
 
-// 広告（Monetag Direct Link）再生処理
-const MONETAG_DIRECT_LINK = 'https://omg10.com/4/10783831';
-
-if (adBtn) {
-    adBtn.addEventListener('click', () => {
-        if (stamina >= MAX_STAMINA) {
-            addLog('▶ スタミナは満タンです！');
-            return;
-        }
-        
-        if (confirm('スポンサー提供の外部サイトを表示します。（※スタミナ回復用）\nサイトを3秒以上見た後、この画面に戻るとスタミナが全回復します！')) {
-            const openTime = Date.now();
-            window.open(MONETAG_DIRECT_LINK, '_blank');
-            
-            // 戻ってきたら回復させる処理
-            const onReturn = () => {
-                if (document.hidden) return; // バックグラウンド時は無視
-                
-                const returnTime = Date.now();
-                if (returnTime - openTime > 3000) { // 3秒以上経過で成功
-                    stamina = MAX_STAMINA;
-                    lastStaminaUpdate = Date.now();
-                    updateStaminaUI();
-                    saveData();
-                    alert('スポンサーサイトの閲覧ありがとうございます！\nスタミナが全回復しました！');
-                } else {
-                    alert('閲覧時間が短すぎたため回復できませんでした。\nもう少し長く見てからお戻りください。');
-                }
-                
-                // イベントリスナーを解除
-                document.removeEventListener('visibilitychange', onReturn);
-                window.removeEventListener('focus', onReturn);
-            };
-
-            // 直後に発火するのを防ぐため、1秒後に検知を開始
-            setTimeout(() => {
-                document.addEventListener('visibilitychange', onReturn);
-                window.addEventListener('focus', onReturn);
-            }, 1000);
-        }
-    });
-}
+// 広告（Google AdSense 審査期間中：他社広告を一時停止）
+// ※審査通過後に Google リワード広告等への差し替えを検討
 
 // リセット処理の最終実行
 function finalizeReset() {
