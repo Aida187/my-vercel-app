@@ -902,19 +902,24 @@ async function renderRanking() {
             if (!res.ok) throw new Error('API Error');
             const data = await res.json();
             
+            // 配列でない（エラーオブジェクトが返ってきた）場合のハンドリング
+            const rankingData = Array.isArray(data) ? data : (data.data || []);
+            
             list.innerHTML = '';
-            if (!data || data.length === 0) {
-                list.innerHTML = '<li style="color:#888; text-align:center;">まだ記録がありません</li>';
+            if (!rankingData || rankingData.length === 0) {
+                // エラー詳細がある場合はそれを表示
+                const msg = data.error ? `エラー: ${data.details || data.error}` : 'まだ記録がありません';
+                list.innerHTML = `<li style="color:#888; font-size:0.8rem; text-align:center;">${msg}</li>`;
             } else {
-                for (let i = 0; i < data.length; i++) {
+                for (let i = 0; i < rankingData.length; i++) {
                     const li = document.createElement('li');
-                    li.textContent = `${i+1}位: ${data[i].name} (${data[i].score})`;
+                    li.textContent = `${i+1}位: ${rankingData[i].name} (${rankingData[i].score})`;
                     list.appendChild(li);
                 }
             }
         } catch (e) {
             console.error(e);
-            list.innerHTML = '<li style="color:#ff5252; font-size:0.9rem; text-align:center;">通信エラー<br><span style="font-size:0.75rem;">(Vercel KVの連携が必要です)</span></li>';
+            list.innerHTML = '<li style="color:#ff5252; font-size:0.9rem; text-align:center;">通信エラー<br><span style="font-size:0.75rem;">(サーバーとの接続に失敗しました)</span></li>';
         }
     }
 }
