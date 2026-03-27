@@ -92,6 +92,7 @@
         <div id="enchant-overlay">
             <div id="enchant-content">
                 <h2 style="color:#ffb300;">✨ 新たなソウル・コアを発見！</h2>
+                <div id="enchant-part-name" style="color:#00e5ff; font-weight:bold; font-size:1.2rem; margin-bottom:10px;">[部位] のソウル・コア</div>
                 <p>装備の性能(ATK/DEF)は自動で強化されましたが、<br>特殊効果を選択してください。</p>
                 <div style="display:flex; justify-content:space-around; gap:10px; margin:20px 0;">
                     <div id="current-enchant-card" class="enchant-card">
@@ -270,7 +271,15 @@
 
     <!-- 演出用レイヤー -->
     <div id="evolution-flash-overlay"></div>
-    <div id="evolution-result-popup"></div>
+    <div id="evolution-result-popup">
+        <div id="evo-result-title" class="evo-result-title">進化成功！</div>
+        <div class="evo-result-card">
+            <img id="evo-result-img" class="evo-result-img" src="" alt="result">
+            <div id="evo-result-name" class="evo-result-name">装備名</div>
+            <div id="evo-result-stats" class="evo-result-stats">ATK: 0 / DEF: 0</div>
+        </div>
+        <div class="evo-close-hint">画面をタップして閉じる</div>
+    </div>
 
     <script src="main_v2.js"></script>
 </body>

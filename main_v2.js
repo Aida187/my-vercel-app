@@ -570,6 +570,12 @@ function showEnchantChoice(item) {
     pendingEnchantItem = item;
     const current = equippedEnchants[item.type];
     
+    // 部位名の和名マッピング
+    const typeNames = { 'weapon': '武器', 'armor': '防具', 'accessory': '装飾品' };
+    const partName = typeNames[item.type] || '装備';
+    const partElement = document.getElementById('enchant-part-name');
+    if (partElement) partElement.textContent = `【${partName}】のソウル・コア`;
+    
     document.getElementById('current-enchant-name').textContent = current ? current.name : 'なし';
     document.getElementById('current-enchant-desc').textContent = current ? current.desc : '-';
     
@@ -650,6 +656,13 @@ function shareToX(text, imageUrl = null) {
 
 // 結果表示画面の更新
 function showResult(item, result) {
+    // 禁断ダンジョン等の他演出による変更をリセット
+    const header = resultOverlay.querySelector('h2');
+    if (header) {
+        header.textContent = 'ダンジョン踏破！';
+        header.style.color = '#ffb300'; // デフォルト色
+    }
+    
     dropRarity.textContent = item.rarity;
     
     // SSRテキストアニメーション制御
@@ -711,12 +724,13 @@ function showResult(item, result) {
                 shareXBtn.textContent = '𝕏 ポストしてシェア';
             }
 
-            // ワンタップ連携
-            shareXBtn.onclick = () => {
-                const text = generateShareText(item);
-                // 画像URLを渡す場合は第2引数に入れる（現状はnull）
-                shareToX(text, null); 
-            };
+            // データセットを更新 (getAttribute/setAttributeで確実に行う)
+            shareXBtn.setAttribute('data-item-name', item.name);
+            shareXBtn.setAttribute('data-rank', item.rarity);
+            shareXBtn.setAttribute('data-type', 'drop');
+            
+            // 古い onclick は削除し、グローバルリスナーに任せる
+            shareXBtn.onclick = null;
         } else {
             shareXBtn.classList.add('hidden');
         }
@@ -1155,8 +1169,9 @@ function processForbiddenDefeat() {
     const shareXBtn = document.getElementById('share-x-btn');
     if (shareXBtn) {
         shareXBtn.classList.remove('hidden');
-        shareXBtn.dataset.type = 'forbidden_loss';
-        shareXBtn.dataset.itemName = lostBase.name;
+        shareXBtn.setAttribute('data-type', 'forbidden_loss');
+        shareXBtn.setAttribute('data-item-name', lostBase.name);
+        shareXBtn.setAttribute('data-rank', 'LOST');
     }
     
     resultOverlay.classList.add('active');
@@ -1792,6 +1807,75 @@ function createEvolvedItem(rarity, level) {
     };
 
     return { item, level };
+}
+
+/**
+ * 合成（進化）の演出を実行する
+ */
+function playEvolutionEffect(isGreatSuccess, item) {
+    const flash = document.getElementById('evolution-flash-overlay');
+    const popup = document.getElementById('evolution-result-popup');
+    
+    if (!flash || !popup) return;
+
+    // 1. 画面フラッシュ演出
+    flash.className = ''; 
+    void flash.offsetWidth; // リフロー強制
+    flash.classList.add(isGreatSuccess ? 'animate-flash-great' : 'animate-flash-normal');
+
+    // 2. ポップアップの内容更新
+    const titleEl = document.getElementById('evo-result-title');
+    const imgEl = document.getElementById('evo-result-img');
+    const nameEl = document.getElementById('evo-result-name');
+    const statsEl = document.getElementById('evo-result-stats');
+
+    if (titleEl) {
+        titleEl.textContent = isGreatSuccess ? '🔥 大成功！！' : '進化成功！';
+        titleEl.style.color = isGreatSuccess ? '#ffb300' : '#fff';
+    }
+
+    if (imgEl) {
+        imgEl.src = `images/${item.type}.png`;
+        imgEl.className = `evo-result-img glow-${item.rarity.toLowerCase()}`;
+    }
+
+    if (nameEl) {
+        nameEl.textContent = `${item.name} Lv${item.level}`;
+        nameEl.className = `evo-result-name rarity-${item.rarity.toLowerCase()}`;
+    }
+
+    if (statsEl) {
+        statsEl.innerHTML = `ATK: ${item.atk} / DEF: ${item.def}<br><span style="color:#888; font-size:0.8rem;">(レアリティ: ${item.rarity})</span>`;
+    }
+
+    // 3. 表示開始
+    popup.classList.add('active');
+
+    // 4. タップで閉じるイベント（一度きり）
+    const closePopup = () => {
+        popup.classList.remove('active');
+        popup.removeEventListener('click', closePopup);
+    };
+    popup.addEventListener('click', closePopup, { once: true }); // 一度だけ発火するイベントリスナー
+
+    // 5. シェアボタンの設定
+    const shareBtn = document.getElementById('evo-share-btn');
+    if (shareBtn) {
+        if (['SR', 'SSR', 'UR'].includes(item.rarity)) {
+            shareBtn.classList.remove('hidden');
+            shareBtn.onclick = (e) => {
+                e.stopPropagation(); // ポップアップ閉じを防止
+                const text = isGreatSuccess 
+                    ? `【超大成功！！】\n合成でレアリティ2段階上昇！\n「${item.name}」(${item.rarity})を手に入れた！！\n#30秒ダンジョン #ハクスラ`
+                    : `【進化成功！】\n素材を捧げて「${item.name}」(${item.rarity})に進化した！！\n#30秒ダンジョン #ハクスラ`;
+                const url = encodeURIComponent('https://my-vercel-app-4ogr.vercel-app/');
+                const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${url}`;
+                window.open(shareUrl, '_blank');
+            };
+        } else {
+            shareBtn.classList.add('hidden');
+        }
+    }
 }
 
 /**

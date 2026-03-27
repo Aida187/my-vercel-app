@@ -1,5 +1,5 @@
 // ----- Service Worker Cache Configuration -----
-const CACHE_NAME = 'hacsura-v6';
+const CACHE_NAME = 'hacsura-v8';
 const urlsToCache = [
   './index.html',
   './style.css',

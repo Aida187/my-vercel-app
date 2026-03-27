@@ -905,35 +905,93 @@ body {
 .animate-flash-normal { animation: flash-normal 0.5s ease-out forwards; }
 .animate-flash-great { animation: flash-great 1s ease-out forwards; }
 
-/* 成功ポップアップテキスト */
+/* 成功ポップアップテキスト (旧) -> モーダルリザルトへ */
 #evolution-result-popup {
     position: fixed;
-    top: 40%;
+    top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 380px;
+    background: rgba(15, 15, 20, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 30px 20px;
     z-index: 10000;
-    pointer-events: none;
-    text-align: center;
-    width: 100%;
+    display: none; /* JSで active クラスを付け替える */
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 0 50px rgba(0,0,0,0.9), 0 0 30px rgba(251, 191, 36, 0.2);
+    pointer-events: auto; /* タップで閉じられるようにする */
 }
 
-.evo-popup-text {
-    font-size: 2.5rem;
+#evolution-result-popup.active {
+    display: flex;
+    animation: resultPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes resultPopIn {
+    0% { transform: translate(-50%, -40%) scale(0.8); opacity: 0; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+.evo-result-title {
+    font-size: 1.8rem;
     font-weight: 900;
-    color: white;
-    text-shadow: 0 0 20px rgba(0,0,0,0.8), 0 0 10px var(--accent-color);
-    opacity: 0;
-    display: inline-block;
+    margin-bottom: 20px;
+    color: #fff;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
-@keyframes evo-popup-anim {
-    0% { opacity: 0; transform: scale(0.5) translateY(20px); }
-    20% { opacity: 1; transform: scale(1.2) translateY(0); }
-    80% { opacity: 1; transform: scale(1) translateY(0); }
-    100% { opacity: 0; transform: scale(1.1) translateY(-50px); }
+.evo-result-card {
+    background: linear-gradient(145deg, rgba(40,40,45,0.95), rgba(20,20,25,0.95));
+    width: 100%;
+    padding: 25px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
-.animate-popup { animation: evo-popup-anim 1.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards; }
+.evo-result-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.evo-result-name {
+    font-size: 1.4rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.evo-result-stats {
+    font-size: 1.1rem;
+    color: #ffd54f;
+    font-weight: bold;
+    text-align: center;
+}
+
+.evo-close-hint {
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 10px;
+    animation: flashHint 1.5s infinite;
+}
+
+@keyframes flashHint {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+.animate-popup { /* 後方互換性：JSでのクラス指定用 */ }
 
 /* 大成功時のテキスト輝き */
 .evo-popup-text.great {
